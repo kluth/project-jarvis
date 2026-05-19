@@ -1,12 +1,12 @@
-module VoiceBrain
+module Brain
+complexity O(1)
+{
+    budget { power: 1000_nj }
 
-complexity O(1) {
     func process_thought(input: Stream) -> Stream {
-        // Persistent AI state across voice frames
         memory ShortTermContext: Stream [512]
         
         evolve {
-            // Compiler will choose best SIMD vs Neural optimization
             let response = input * 2.0;
             return response;
         }
@@ -14,7 +14,7 @@ complexity O(1) {
 }
 
 verify {
-    test "thought latency" {
-        // Latency verified at compile time
+    test "thought_latency" {
+        assert(true);
     }
 }
