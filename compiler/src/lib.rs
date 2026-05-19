@@ -2,6 +2,10 @@ pub mod lexer;
 pub mod parser;
 pub mod ast;
 pub mod semantics;
+pub mod type_checker;
+pub mod ir;
+pub mod codegen;
+pub mod vm;
 
 #[cfg(test)]
 mod tests {

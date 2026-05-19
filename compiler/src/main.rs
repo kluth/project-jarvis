@@ -20,8 +20,25 @@ fn main() {
     match parser.parse_module() {
         Ok(ast) => {
             let mut analyzer = Analyzer::new();
+            let mut checker = jarvis_compiler::type_checker::TypeChecker::new();
+            
             match analyzer.analyze(&ast) {
-                Ok(_) => println!("Compilation Successful: PDD Verified, TDD Blocks Parsed."),
+                Ok(_) => {
+                    match checker.check(&ast) {
+                        Ok(_) => {
+                            println!("Compilation Successful: PDD Verified, Types Checked.");
+                            let mut codegen = jarvis_compiler::codegen::CodeGen::new();
+                            let bytecode = codegen.generate(&ast);
+                            println!("Bytecode Generated: {} instructions.", bytecode.instructions.len());
+                            
+                            println!("--- VM Execution Start ---");
+                            let mut vm = jarvis_compiler::vm::VM::new();
+                            vm.execute(&bytecode);
+                            println!("--- VM Execution End ---");
+                        }
+                        Err(e) => println!("Type Error: {}", e),
+                    }
+                }
                 Err(e) => println!("Semantic Error: {}", e),
             }
         }

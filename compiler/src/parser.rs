@@ -89,7 +89,20 @@ impl<'a> Parser<'a> {
         };
 
         self.expect(Token::OpenParen)?;
-        // parse params... ignoring for bootstrap
+        let mut params = Vec::new();
+        while self.current_token != Token::CloseParen && self.current_token != Token::Eof {
+            if let Token::Identifier(pname) = self.current_token {
+                self.advance();
+                self.expect(Token::Colon)?;
+                self.parse_type()?; // ignoring types for param list in Node struct for now
+                params.push(pname);
+                if self.current_token == Token::Comma {
+                    self.advance();
+                }
+            } else {
+                break;
+            }
+        }
         self.expect(Token::CloseParen)?;
         
         let mut return_ty = None;
@@ -204,7 +217,37 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self) -> Result<Expr<'a>, String> {
-        // Very basic parsing for demo. Only literals and ids for now.
+        self.parse_expression_with_precedence(0)
+    }
+
+    fn parse_expression_with_precedence(&mut self, precedence: u8) -> Result<Expr<'a>, String> {
+        let mut left = self.parse_prefix()?;
+
+        while precedence < self.get_precedence() {
+            let op_token = self.current_token;
+            self.advance();
+            let right = self.parse_expression_with_precedence(Self::token_precedence(op_token))?;
+            
+            let op_str = match op_token {
+                Token::Plus => "+",
+                Token::Minus => "-",
+                Token::Star => "*",
+                Token::Slash => "/",
+                Token::Equals => "==",
+                _ => return Err("Unexpected binary operator".to_string()),
+            };
+
+            left = Expr::BinaryOp {
+                left: Box::new(left),
+                op: op_str,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn parse_prefix(&mut self) -> Result<Expr<'a>, String> {
         match self.current_token {
             Token::NumberLiteral(n) => {
                 self.advance();
@@ -218,7 +261,26 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(Expr::Identifier(id))
             }
-            _ => Err(format!("Unexpected token in expression: {:?}", self.current_token))
+            Token::OpenParen => {
+                self.advance();
+                let expr = self.parse_expression()?;
+                self.expect(Token::CloseParen)?;
+                Ok(expr)
+            }
+            _ => Err(format!("Unexpected token in expression prefix: {:?}", self.current_token))
+        }
+    }
+
+    fn get_precedence(&self) -> u8 {
+        Self::token_precedence(self.current_token)
+    }
+
+    fn token_precedence(token: Token<'a>) -> u8 {
+        match token {
+            Token::Equals => 1,
+            Token::Plus | Token::Minus => 2,
+            Token::Star | Token::Slash => 3,
+            _ => 0,
         }
     }
 

@@ -1,12 +1,26 @@
 module VoiceProcessor
 
 complexity O(1) {
-    func init() {}
-    func standby() {}
+    func process(stream: Stream) -> Stream {
+        let factor: f32 = 1.5;
+        let offset = 0.1;
+        let result = stream; // stream op
+        return result;
+    }
+}
+
+complexity O(N) {
+    func amplify() {
+        let i = 0;
+        while i == 0 {
+            let j = 1;
+        }
+    }
 }
 
 verify {
-    test "initialization" {
-        // Test logic would be executed by the VM/Kernel
+    test "amplification results" {
+        let input = 0.1;
+        let expected = 0.25;
     }
 }
