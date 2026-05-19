@@ -67,10 +67,16 @@ impl<'a> Parser<'a> {
         
         let mut content = Vec::new();
         while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
-            if self.current_token == Token::Func {
-                content.push(self.parse_function()?);
-            } else {
-                self.advance(); // Skip unknown for now
+            match self.current_token {
+                Token::Func => content.push(self.parse_function()?),
+                Token::Budget => {
+                    // Budget at this level is treated as a metadata node or ignored if handled elsewhere
+                    // For now, let's parse it and we can wrap functions or handle it as a sibling
+                    let _stmt = self.parse_budget_statement()?;
+                    // We need a way to store Stmt in Node or a new Node variant
+                    // Let's just skip it for now but advance properly
+                }
+                _ => self.advance(),
             }
         }
         
@@ -151,6 +157,7 @@ impl<'a> Parser<'a> {
             Token::Contract => self.parse_contract_block(),
             Token::Knowledge => self.parse_knowledge_statement(),
             Token::Publish => self.parse_publish_statement(),
+            Token::Assert => self.parse_assert_statement(),
             _ => {
                 let expr = self.parse_expression()?;
                 if self.current_token == Token::Semicolon {
@@ -207,15 +214,28 @@ impl<'a> Parser<'a> {
 
     fn parse_budget_statement(&mut self) -> Result<Stmt<'a>, String> {
         self.advance(); // budget
-        let limit = if let Token::NumberLiteral(n) = self.current_token {
-            let val = n.parse::<f32>().unwrap_or(0.0);
-            self.advance();
-            val
-        } else {
-            return Err("Expected budget value".to_string());
-        };
         self.expect(Token::OpenBrace)?;
-        let body = self.parse_block()?;
+        
+        let mut limit = 0.0;
+        if let Token::Identifier("power") = self.current_token {
+            self.advance();
+            self.expect(Token::Colon)?;
+            if let Token::NumberLiteral(n) = self.current_token {
+                limit = n.parse::<f32>().unwrap_or(0.0);
+                self.advance();
+                // Optionally consume '_nj' if lexed as separate identifier
+                if let Token::Identifier(id) = self.current_token {
+                    if id.contains("nj") { self.advance(); }
+                }
+            }
+        }
+        
+        let mut body = Vec::new();
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            body.push(self.parse_statement()?);
+        }
+        self.expect(Token::CloseBrace)?;
+        
         Ok(Stmt::Budget { limit, body })
     }
 
@@ -387,6 +407,8 @@ impl<'a> Parser<'a> {
                 Token::Star => "*",
                 Token::Slash => "/",
                 Token::Equals => "==",
+                Token::Less => "<",
+                Token::Greater => ">",
                 _ => return Err("Unexpected binary operator".to_string()),
             };
 
@@ -412,7 +434,24 @@ impl<'a> Parser<'a> {
             }
             Token::Identifier(id) => {
                 self.advance();
-                Ok(Expr::Identifier(id))
+                if self.current_token == Token::OpenParen {
+                    self.advance();
+                    let mut args = Vec::new();
+                    while self.current_token != Token::CloseParen && self.current_token != Token::Eof {
+                        args.push(self.parse_expression()?);
+                        if self.current_token == Token::Comma {
+                            self.advance();
+                        }
+                    }
+                    self.expect(Token::CloseParen)?;
+                    Ok(Expr::Call { name: id, args })
+                } else if self.current_token == Token::Assign {
+                    self.advance();
+                    let value = self.parse_expression()?;
+                    Ok(Expr::Assignment { name: id, value: Box::new(value) })
+                } else {
+                    Ok(Expr::Identifier(id))
+                }
             }
             Token::OpenParen => {
                 self.advance();
@@ -430,11 +469,22 @@ impl<'a> Parser<'a> {
 
     fn token_precedence(token: Token<'a>) -> u8 {
         match token {
-            Token::Equals => 1,
+            Token::Equals | Token::Less | Token::Greater => 1,
             Token::Plus | Token::Minus => 2,
             Token::Star | Token::Slash => 3,
             _ => 0,
         }
+    }
+
+    fn parse_assert_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // assert
+        self.expect(Token::OpenParen)?;
+        let condition = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Stmt::Assert { condition })
     }
 
     fn parse_verify_block(&mut self) -> Result<Node<'a>, String> {

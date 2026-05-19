@@ -24,6 +24,7 @@ pub enum Token<'a> {
     Knowledge,
     Publish,
     Reflect,
+    Assert,
     TypeI32,
     TypeF32,
     TypeStream,
@@ -37,6 +38,8 @@ pub enum Token<'a> {
     Slash,
     Assign,
     Equals,
+    Less,
+    Greater,
     Comma,
     Colon,
     Semicolon,
@@ -70,7 +73,7 @@ impl<'a> Lexer<'a> {
 
         let c = self.peek().unwrap();
 
-        if c.is_alphabetic() {
+        if c.is_alphabetic() || c == '_' {
             return self.lex_identifier_or_keyword();
         }
 
@@ -107,10 +110,15 @@ impl<'a> Lexer<'a> {
                     Token::Assign
                 }
             }
+            '<' => { self.consume(); Token::Less }
+            '>' => { self.consume(); Token::Greater }
             ',' => { self.consume(); Token::Comma }
             ':' => { self.consume(); Token::Colon }
             ';' => { self.consume(); Token::Semicolon }
-            _ => { self.consume(); Token::Unknown }
+            _ => { 
+                self.consume(); 
+                Token::Unknown 
+            }
         }
     }
 
@@ -195,9 +203,10 @@ impl<'a> Lexer<'a> {
             "knowledge" => Token::Knowledge,
             "publish" => Token::Publish,
             "reflect" => Token::Reflect,
-            "i32" => Token::TypeI32,
-            "f32" => Token::TypeF32,
+            "i32" | "I32" => Token::TypeI32,
+            "f32" | "F32" => Token::TypeF32,
             "Stream" => Token::TypeStream,
+            "assert" => Token::Assert,
             _ => Token::Identifier(text),
         }
     }

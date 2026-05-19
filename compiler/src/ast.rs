@@ -11,6 +11,14 @@ pub enum Expr<'a> {
     NumberLiteral(&'a str),
     StringLiteral(&'a str),
     Identifier(&'a str),
+    Call {
+        name: &'a str,
+        args: Vec<Expr<'a>>,
+    },
+    Assignment {
+        name: &'a str,
+        value: Box<Expr<'a>>,
+    },
     BinaryOp {
         left: Box<Expr<'a>>,
         op: &'a str,
@@ -71,6 +79,9 @@ pub enum Stmt<'a> {
     },
     Publish {
         target: &'a str,
+    },
+    Assert {
+        condition: Expr<'a>,
     },
 }
 

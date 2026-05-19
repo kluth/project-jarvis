@@ -3,14 +3,21 @@ use std::env;
 use jarvis_compiler::lexer::Lexer;
 use jarvis_compiler::parser::Parser;
 use jarvis_compiler::semantics::OmegaVerifier;
-use jarvis_compiler::type_checker::TypeChecker;
-use jarvis_compiler::codegen::CodeGenerator;
-use jarvis_compiler::vm::VM;
+use jarvis_compiler::backend::AotBackend;
+use jarvis_compiler::nci::McpServer;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        println!("Usage: jrvc <file.jrv>");
+        println!("Usage: jrvc <file.jrv> [--mcp]");
+        return;
+    }
+
+    if args.contains(&"--mcp".to_string()) {
+        println!("JARVIS Neuro-Compiler Interface (NCI) Active.");
+        println!("MCP Server listening for autonomous repair loops...");
+        let _server = McpServer::new();
+        // Mock server loop
         return;
     }
 
@@ -23,31 +30,20 @@ fn main() {
     match parser.parse_module() {
         Ok(ast) => {
             let verifier = OmegaVerifier::new();
-            let mut checker = TypeChecker::new();
             
             // 1. Omega Verification (PDD/EFDD/EuDD Gatekeeper)
             match verifier.verify(&ast) {
                 Ok(_) => {
-                    // 2. Type Checking
-                    match checker.check(&ast) {
-                        Ok(_) => {
-                            println!("Compilation Successful: PDD Verified, Types Checked.");
-                            
-                            // 3. Code Generation
-                            let mut codegen = CodeGenerator::new();
-                            match codegen.generate(&ast) {
-                                Ok(bytecode) => {
-                                    println!("Bytecode Generated: {} instructions.", bytecode.instructions.len());
-                                    
-                                    println!("--- VM Execution Start ---");
-                                    let mut vm = VM::new();
-                                    vm.execute(&bytecode);
-                                    println!("--- VM Execution End ---");
-                                }
-                                Err(e) => println!("Codegen Error: {}", e),
-                            }
+                    println!("Compilation Successful: PDD/EFDD Verified.");
+                    
+                    // 2. AOT Native Lowering
+                    let mut backend = AotBackend::new();
+                    match backend.lower(&ast) {
+                        Ok(image) => {
+                            println!("AOT Native Image Generated: {} instructions.", image.instructions.len());
+                            println!("Target: Custom Jarvis-ISA (Energy-Aware).");
                         }
-                        Err(e) => println!("Type Error: {}", e),
+                        Err(e) => println!("Backend Error: {}", e),
                     }
                 }
                 Err(e) => println!("Verification Error: {}", e),

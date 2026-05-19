@@ -13,6 +13,7 @@ pub mod scheduler;
 pub mod stream;
 pub mod allocator;
 pub mod evolution;
+pub mod substrate;
 
 pub struct JarvisKernel;
 

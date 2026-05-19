@@ -6,7 +6,9 @@ pub mod type_checker;
 pub mod ir;
 pub mod codegen;
 pub mod vm;
-pub mod jit;
+pub mod aot;
+pub mod backend;
+pub mod nci;
 
 #[cfg(test)]
 mod tests {
