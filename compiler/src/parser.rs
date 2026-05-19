@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
             if let Token::Identifier(pname) = self.current_token {
                 self.advance();
                 self.expect(Token::Colon)?;
-                self.parse_type()?; // ignoring types for param list in Node struct for now
+                self.parse_type()?;
                 params.push(pname);
                 if self.current_token == Token::Comma {
                     self.advance();
@@ -148,6 +148,9 @@ impl<'a> Parser<'a> {
             Token::Prob => self.parse_prob_block(),
             Token::Sync => self.parse_sync_block(),
             Token::Gossip => self.parse_gossip_statement(),
+            Token::Contract => self.parse_contract_block(),
+            Token::Knowledge => self.parse_knowledge_statement(),
+            Token::Publish => self.parse_publish_statement(),
             _ => {
                 let expr = self.parse_expression()?;
                 if self.current_token == Token::Semicolon {
@@ -156,6 +159,47 @@ impl<'a> Parser<'a> {
                 Ok(Stmt::Expression { expr })
             }
         }
+    }
+
+    fn parse_contract_block(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // contract
+        self.expect(Token::OpenBrace)?;
+        let start = self.lexer.cursor;
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            self.advance();
+        }
+        let spec = &self.lexer.source[start..self.lexer.cursor];
+        self.expect(Token::CloseBrace)?;
+        Ok(Stmt::Contract { spec })
+    }
+
+    fn parse_knowledge_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // knowledge
+        let name = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "unnamed" };
+        self.expect(Token::Colon)?;
+        self.expect(Token::Identifier("Vector"))?;
+        self.expect(Token::OpenBracket)?;
+        let mut dim = 0;
+        if let Token::NumberLiteral(n) = self.current_token {
+            dim = n.parse().unwrap_or(0);
+            self.advance();
+        }
+        self.expect(Token::CloseBracket)?;
+        Ok(Stmt::Knowledge { name, dim })
+    }
+
+    fn parse_publish_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // publish
+        self.expect(Token::OpenParen)?;
+        let target = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "global" };
+        self.expect(Token::CloseParen)?;
+        Ok(Stmt::Publish { target })
     }
 
     fn parse_budget_statement(&mut self) -> Result<Stmt<'a>, String> {

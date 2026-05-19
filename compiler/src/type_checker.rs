@@ -118,6 +118,11 @@ impl<'a> TypeChecker<'a> {
                 self.exit_scope();
             }
             Stmt::Gossip { .. } => {}
+            Stmt::Contract { .. } => {}
+            Stmt::Knowledge { name, .. } => {
+                self.define_var(name, Type::Stream);
+            }
+            Stmt::Publish { .. } => {}
         }
         Ok(())
     }

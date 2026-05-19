@@ -62,6 +62,16 @@ pub enum Stmt<'a> {
     Gossip {
         target: &'a str,
     },
+    Contract {
+        spec: &'a str,
+    },
+    Knowledge {
+        name: &'a str,
+        dim: usize,
+    },
+    Publish {
+        target: &'a str,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -76,7 +86,7 @@ pub enum Node<'a> {
     },
     Function {
         name: &'a str,
-        params: Vec<&'a str>, // simplified
+        params: Vec<&'a str>,
         return_ty: Option<Type>,
         body: Vec<Stmt<'a>>,
     },

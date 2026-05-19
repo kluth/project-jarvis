@@ -1,4 +1,4 @@
-use crate::ast::Node;
+use crate::ast::{Node, Stmt};
 
 pub struct Analyzer;
 
@@ -26,53 +26,57 @@ impl Analyzer {
 
     fn check(&mut self, node: &Node) -> Result<(), String> {
         match node {
-            Node::Function { name, body, .. } => {
+            Node::Function { name: _, body, .. } => {
                 // 1. PDD Verification
-                let loops = Self::count_loops(body);
-                // (PDD logic...)
+                let _loops = Self::count_loops(body);
                 
                 // 2. Entropy Verification
-                let entropy = Self::estimate_entropy(body);
-                // For bootstrap, we'll just log it. In a real MCU profile, we'd fail if > budget.
+                let _entropy = Self::estimate_entropy(body);
             }
             _ => {}
         }
         Ok(())
     }
 
-    fn estimate_entropy(body: &Vec<crate::ast::Stmt>) -> f32 {
+    fn estimate_entropy(body: &Vec<Stmt>) -> f32 {
         let mut total = 0.0;
         for stmt in body {
             match stmt {
-                crate::ast::Stmt::Budget { limit, body: inner } => {
+                Stmt::Budget { limit, body: inner } => {
                     let cost = Self::estimate_entropy(inner);
                     if cost > *limit {
-                        // This would be a compilation failure in a strict profile
                         println!("Warning: Budget {} exceeded (Estimated: {})", limit, cost);
                     }
                 }
-                crate::ast::Stmt::Expression { .. } => total += 1.0,
-                crate::ast::Stmt::Let { .. } => total += 0.5,
+                Stmt::Expression { .. } => total += 1.0,
+                Stmt::Let { .. } => total += 0.5,
+                Stmt::Evolve { body: inner } => total += Self::estimate_entropy(inner) * 1.5,
                 _ => {}
             }
         }
         total
     }
 
-    fn count_loops(body: &Vec<crate::ast::Stmt>) -> usize {
+    fn count_loops(body: &Vec<Stmt>) -> usize {
         let mut count = 0;
         for stmt in body {
-            if let crate::ast::Stmt::While { body: inner_body, .. } = stmt {
-                count += 1 + Self::count_loops(inner_body);
-            }
-            if let crate::ast::Stmt::If { then_branch, else_branch, .. } = stmt {
-                count += Self::count_loops(then_branch);
-                if let Some(eb) = else_branch {
-                    count += Self::count_loops(eb);
+            match stmt {
+                Stmt::While { body: inner, .. } => {
+                    count += 1 + Self::count_loops(inner);
                 }
-            }
-            if let crate::ast::Stmt::Evolve { body: inner_body } = stmt {
-                count += Self::count_loops(inner_body);
+                Stmt::If { then_branch, else_branch, .. } => {
+                    count += Self::count_loops(then_branch);
+                    if let Some(eb) = else_branch {
+                        count += Self::count_loops(eb);
+                    }
+                }
+                Stmt::Evolve { body: inner } => {
+                    count += Self::count_loops(inner);
+                }
+                Stmt::Sync { body: inner, .. } => {
+                    count += Self::count_loops(inner);
+                }
+                _ => {}
             }
         }
         count

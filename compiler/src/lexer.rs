@@ -20,6 +20,10 @@ pub enum Token<'a> {
     Swarm,
     Consensus,
     Gossip,
+    Contract,
+    Knowledge,
+    Publish,
+    Reflect,
     TypeI32,
     TypeF32,
     TypeStream,
@@ -48,8 +52,8 @@ pub enum Token<'a> {
 }
 
 pub struct Lexer<'a> {
-    source: &'a str,
-    cursor: usize,
+    pub source: &'a str,
+    pub cursor: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -187,6 +191,10 @@ impl<'a> Lexer<'a> {
             "swarm" => Token::Swarm,
             "consensus" => Token::Consensus,
             "gossip" => Token::Gossip,
+            "contract" => Token::Contract,
+            "knowledge" => Token::Knowledge,
+            "publish" => Token::Publish,
+            "reflect" => Token::Reflect,
             "i32" => Token::TypeI32,
             "f32" => Token::TypeF32,
             "Stream" => Token::TypeStream,
