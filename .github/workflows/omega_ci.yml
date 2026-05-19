@@ -23,7 +23,7 @@ jobs:
 
       - name: "Enforcement: PDD & EFDD Static Verification"
         run: |
-          cd compiler && cargo run -- voice.jrv
+          cd compiler && cargo run -- ../voice.jrv
           
       - name: "Enforcement: Kernel Substrate Integrity"
         run: |
