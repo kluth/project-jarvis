@@ -199,6 +199,9 @@ impl<'a> Parser<'a> {
             id
         } else { "global" };
         self.expect(Token::CloseParen)?;
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
         Ok(Stmt::Publish { target })
     }
 
