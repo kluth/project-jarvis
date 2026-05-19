@@ -1,0 +1,12 @@
+module VoiceProcessor
+
+complexity O(1) {
+    func init() {}
+    func standby() {}
+}
+
+verify {
+    test "initialization" {
+        // Test logic would be executed by the VM/Kernel
+    }
+}
