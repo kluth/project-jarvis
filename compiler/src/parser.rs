@@ -142,6 +142,8 @@ impl<'a> Parser<'a> {
             Token::Return => self.parse_return_statement(),
             Token::While => self.parse_while_statement(),
             Token::If => self.parse_if_statement(),
+            Token::Memory => self.parse_memory_statement(),
+            Token::Evolve => self.parse_evolve_block(),
             _ => {
                 let expr = self.parse_expression()?;
                 if self.current_token == Token::Semicolon {
@@ -150,6 +152,39 @@ impl<'a> Parser<'a> {
                 Ok(Stmt::Expression { expr })
             }
         }
+    }
+
+    fn parse_memory_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // memory
+        let name = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else {
+            return Err("Expected name for memory state".to_string());
+        };
+
+        self.expect(Token::Colon)?;
+        let ty = self.parse_type()?;
+        
+        // Optional size in brackets [size]
+        let mut size = 1;
+        if self.current_token == Token::OpenBracket {
+            self.advance();
+            if let Token::NumberLiteral(n) = self.current_token {
+                size = n.parse().unwrap_or(1);
+                self.advance();
+            }
+            self.expect(Token::CloseBracket)?;
+        }
+
+        Ok(Stmt::Memory { name, ty, size })
+    }
+
+    fn parse_evolve_block(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // evolve
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::Evolve { body })
     }
 
     fn parse_let_statement(&mut self) -> Result<Stmt<'a>, String> {

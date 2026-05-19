@@ -86,6 +86,16 @@ impl<'a> TypeChecker<'a> {
             Stmt::Expression { expr } => {
                 self.infer_expr_type(expr)?;
             }
+            Stmt::Memory { name, ty, .. } => {
+                self.define_var(name, *ty);
+            }
+            Stmt::Evolve { body } => {
+                self.enter_scope();
+                for s in body {
+                    self.check_stmt(s, expected_ret)?;
+                }
+                self.exit_scope();
+            }
         }
         Ok(())
     }
@@ -101,7 +111,7 @@ impl<'a> TypeChecker<'a> {
                     Ok(ty)
                 } else {
                     // Predefined names for bootstrap
-                    if *id == "stream" { return Ok(Type::Stream); }
+                    if *id == "stream" || *id == "input" { return Ok(Type::Stream); }
                     Err(format!("Undefined variable '{}'", id))
                 }
             }

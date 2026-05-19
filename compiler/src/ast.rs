@@ -40,6 +40,14 @@ pub enum Stmt<'a> {
         condition: Expr<'a>,
         body: Vec<Stmt<'a>>,
     },
+    Memory {
+        name: &'a str,
+        ty: Type,
+        size: usize,
+    },
+    Evolve {
+        body: Vec<Stmt<'a>>,
+    },
 }
 
 #[derive(Debug, PartialEq)]

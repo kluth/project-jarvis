@@ -63,6 +63,9 @@ impl Analyzer {
                     count += Self::count_loops(eb);
                 }
             }
+            if let crate::ast::Stmt::Evolve { body: inner_body } = stmt {
+                count += Self::count_loops(inner_body);
+            }
         }
         count
     }
