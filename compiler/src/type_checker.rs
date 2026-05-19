@@ -96,6 +96,22 @@ impl<'a> TypeChecker<'a> {
                 }
                 self.exit_scope();
             }
+            Stmt::Budget { body, .. } => {
+                self.enter_scope();
+                for s in body {
+                    self.check_stmt(s, expected_ret)?;
+                }
+                self.exit_scope();
+            }
+            Stmt::Prob { branches } => {
+                for (_, body) in branches {
+                    self.enter_scope();
+                    for s in body {
+                        self.check_stmt(s, expected_ret)?;
+                    }
+                    self.exit_scope();
+                }
+            }
         }
         Ok(())
     }

@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::OpenBrace)?;
         let body = self.parse_block()?;
         
-        Ok(Node::Function { name, params: Vec::new(), return_ty, body })
+        Ok(Node::Function { name, params, return_ty, body })
     }
 
     fn parse_type(&mut self) -> Result<Type, String> {
@@ -144,6 +144,8 @@ impl<'a> Parser<'a> {
             Token::If => self.parse_if_statement(),
             Token::Memory => self.parse_memory_statement(),
             Token::Evolve => self.parse_evolve_block(),
+            Token::Budget => self.parse_budget_statement(),
+            Token::Prob => self.parse_prob_block(),
             _ => {
                 let expr = self.parse_expression()?;
                 if self.current_token == Token::Semicolon {
@@ -152,6 +154,40 @@ impl<'a> Parser<'a> {
                 Ok(Stmt::Expression { expr })
             }
         }
+    }
+
+    fn parse_budget_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // budget
+        let limit = if let Token::NumberLiteral(n) = self.current_token {
+            let val = n.parse::<f32>().unwrap_or(0.0);
+            self.advance();
+            val
+        } else {
+            return Err("Expected budget value".to_string());
+        };
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::Budget { limit, body })
+    }
+
+    fn parse_prob_block(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // prob
+        self.expect(Token::OpenBrace)?;
+        let mut branches = Vec::new();
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            if let Token::NumberLiteral(n) = self.current_token {
+                let weight = n.parse::<f32>().unwrap_or(0.0);
+                self.advance();
+                self.expect(Token::Arrow)?;
+                self.expect(Token::OpenBrace)?;
+                let branch_body = self.parse_block()?;
+                branches.push((weight, branch_body));
+            } else {
+                break;
+            }
+        }
+        self.expect(Token::CloseBrace)?;
+        Ok(Stmt::Prob { branches })
     }
 
     fn parse_memory_statement(&mut self) -> Result<Stmt<'a>, String> {
@@ -166,7 +202,6 @@ impl<'a> Parser<'a> {
         self.expect(Token::Colon)?;
         let ty = self.parse_type()?;
         
-        // Optional size in brackets [size]
         let mut size = 1;
         if self.current_token == Token::OpenBracket {
             self.advance();
@@ -214,7 +249,7 @@ impl<'a> Parser<'a> {
 
     fn parse_return_statement(&mut self) -> Result<Stmt<'a>, String> {
         self.advance(); // return
-        let value = if self.current_token != Token::Semicolon {
+        let value = if self.current_token != Token::Semicolon && self.current_token != Token::CloseBrace {
             Some(self.parse_expression()?)
         } else {
             None

@@ -48,6 +48,13 @@ pub enum Stmt<'a> {
     Evolve {
         body: Vec<Stmt<'a>>,
     },
+    Budget {
+        limit: f32,
+        body: Vec<Stmt<'a>>,
+    },
+    Prob {
+        branches: Vec<(f32, Vec<Stmt<'a>>)>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
