@@ -58,10 +58,10 @@ impl OmegaVerifier {
         if let Node::Function { body, name, .. } = func {
             let max_depth = self.analyze_loop_nesting(body);
             let actual_complexity = match max_depth {
-                0 => "O(1)",
-                1 => "O(N)",
-                2 => "O(N^2)",
-                _ => "O(N^k)",
+                0 => "1",
+                1 => "N",
+                2 => "N^2",
+                _ => "N^k",
             };
 
             if actual_complexity != expected_complexity {
