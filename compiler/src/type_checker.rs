@@ -24,7 +24,6 @@ impl<'a> TypeChecker<'a> {
             }
             Node::Function { name: _, params, return_ty, body } => {
                 self.enter_scope();
-                // Add params to scope (treating as Unknown for now in bootstrap)
                 for p in params {
                     self.define_var(p, Type::Unknown);
                 }
@@ -58,7 +57,6 @@ impl<'a> TypeChecker<'a> {
                 } else {
                     Type::Unknown // Void
                 };
-                // Check against expected_ret... skipping strict void check for now
             }
             Stmt::While { condition, body } => {
                 self.infer_expr_type(condition)?;
@@ -112,6 +110,14 @@ impl<'a> TypeChecker<'a> {
                     self.exit_scope();
                 }
             }
+            Stmt::Sync { body, .. } => {
+                self.enter_scope();
+                for s in body {
+                    self.check_stmt(s, expected_ret)?;
+                }
+                self.exit_scope();
+            }
+            Stmt::Gossip { .. } => {}
         }
         Ok(())
     }
@@ -121,12 +127,11 @@ impl<'a> TypeChecker<'a> {
             Expr::NumberLiteral(n) => {
                 if n.contains('.') { Ok(Type::F32) } else { Ok(Type::I32) }
             }
-            Expr::StringLiteral(_) => Ok(Type::Unknown), // Should be String
+            Expr::StringLiteral(_) => Ok(Type::Unknown),
             Expr::Identifier(id) => {
                 if let Some(ty) = self.resolve_var(id) {
                     Ok(ty)
                 } else {
-                    // Predefined names for bootstrap
                     if *id == "stream" || *id == "input" { return Ok(Type::Stream); }
                     Err(format!("Undefined variable '{}'", id))
                 }
@@ -135,7 +140,6 @@ impl<'a> TypeChecker<'a> {
                 let lt = self.infer_expr_type(left)?;
                 let rt = self.infer_expr_type(right)?;
                 if lt != rt && lt != Type::Unknown && rt != Type::Unknown {
-                    // Allow Stream * scalar for JARVIS semantics
                     if lt == Type::Stream || rt == Type::Stream {
                         return Ok(Type::Stream);
                     }

@@ -146,6 +146,8 @@ impl<'a> Parser<'a> {
             Token::Evolve => self.parse_evolve_block(),
             Token::Budget => self.parse_budget_statement(),
             Token::Prob => self.parse_prob_block(),
+            Token::Sync => self.parse_sync_block(),
+            Token::Gossip => self.parse_gossip_statement(),
             _ => {
                 let expr = self.parse_expression()?;
                 if self.current_token == Token::Semicolon {
@@ -188,6 +190,40 @@ impl<'a> Parser<'a> {
         }
         self.expect(Token::CloseBrace)?;
         Ok(Stmt::Prob { branches })
+    }
+
+    fn parse_sync_block(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // sync
+        let protocol = if self.current_token == Token::OpenParen {
+            self.advance();
+            self.expect(Token::Identifier("protocol"))?;
+            self.expect(Token::Colon)?;
+            let p = if let Token::Identifier(id) = self.current_token {
+                self.advance();
+                id
+            } else { "default" };
+            self.expect(Token::CloseParen)?;
+            p
+        } else {
+            "default"
+        };
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::Sync { protocol, body })
+    }
+
+    fn parse_gossip_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // gossip
+        self.expect(Token::OpenParen)?;
+        let target = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "broadcast" };
+        self.expect(Token::CloseParen)?;
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Stmt::Gossip { target })
     }
 
     fn parse_memory_statement(&mut self) -> Result<Stmt<'a>, String> {

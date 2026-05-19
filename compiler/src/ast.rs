@@ -55,6 +55,13 @@ pub enum Stmt<'a> {
     Prob {
         branches: Vec<(f32, Vec<Stmt<'a>>)>,
     },
+    Sync {
+        protocol: &'a str,
+        body: Vec<Stmt<'a>>,
+    },
+    Gossip {
+        target: &'a str,
+    },
 }
 
 #[derive(Debug, PartialEq)]
