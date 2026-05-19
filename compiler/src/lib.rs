@@ -6,13 +6,14 @@ pub mod type_checker;
 pub mod ir;
 pub mod codegen;
 pub mod vm;
+pub mod jit;
 
 #[cfg(test)]
 mod tests {
     use crate::lexer::{Lexer, Token};
     use crate::parser::Parser;
     use crate::ast::Node;
-    use crate::semantics::Analyzer;
+    use crate::semantics::OmegaVerifier;
 
     #[test]
     fn test_lex_basic_keywords() {
@@ -42,26 +43,27 @@ mod tests {
     }
 
     #[test]
-    fn test_complexity_verification_pass() {
+    fn test_omega_verification_pass() {
         let source = "module Audio complexity O(1) { func init() {} }";
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         let ast = parser.parse_module().unwrap();
         
-        let mut analyzer = Analyzer::new();
-        assert!(analyzer.analyze(&ast).is_ok());
+        let verifier = OmegaVerifier::new();
+        assert!(verifier.verify(&ast).is_ok());
     }
 
     #[test]
-    fn test_complexity_verification_fail() {
-        let source = "module Audio complexity O(N) { func init() {} }";
+    fn test_omega_verification_fail() {
+        // Declared O(N^2) but it's actually O(1)
+        let source = "module Audio complexity O(N^2) { func init() {} }";
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         let ast = parser.parse_module().unwrap();
         
-        let mut analyzer = Analyzer::new();
-        let result = analyzer.analyze(&ast);
+        let verifier = OmegaVerifier::new();
+        let result = verifier.verify(&ast);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Complexity mismatch"));
+        assert!(result.unwrap_err().contains("PDD VIOLATION"));
     }
 }

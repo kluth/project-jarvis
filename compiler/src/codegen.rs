@@ -2,13 +2,13 @@ use crate::ast::{Node, Stmt, Expr};
 use crate::ir::{Instruction, Bytecode};
 use std::collections::HashMap;
 
-pub struct CodeGen<'a> {
+pub struct CodeGenerator<'a> {
     instructions: Vec<Instruction>,
     symbol_table: HashMap<&'a str, usize>,
     next_reg: usize,
 }
 
-impl<'a> CodeGen<'a> {
+impl<'a> CodeGenerator<'a> {
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
@@ -17,16 +17,23 @@ impl<'a> CodeGen<'a> {
         }
     }
 
-    pub fn generate(&mut self, node: &Node<'a>) -> Bytecode {
+    /// Generates Bytecode from the AST.
+    /// Time: O(N) where N is number of nodes.
+    pub fn generate(&mut self, node: &Node<'a>) -> Result<Bytecode, String> {
         match node {
             Node::Module { body, .. } => {
                 for child in body {
                     self.generate_node(child);
                 }
             }
+            Node::ComplexityBlock { content, .. } => {
+                for child in content {
+                    self.generate_node(child);
+                }
+            }
             _ => {}
         }
-        Bytecode { instructions: self.instructions.clone() }
+        Ok(Bytecode { instructions: self.instructions.clone() })
     }
 
     fn generate_node(&mut self, node: &Node<'a>) {
@@ -64,7 +71,12 @@ impl<'a> CodeGen<'a> {
             Stmt::Expression { expr } => {
                 self.generate_expr(expr);
             }
-            _ => {} // ignoring complex flow for now
+            Stmt::Budget { body, .. } => {
+                for s in body {
+                    self.generate_stmt(s);
+                }
+            }
+            _ => {} 
         }
     }
 

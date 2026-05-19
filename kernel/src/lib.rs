@@ -10,6 +10,8 @@ fn panic(_info: &PanicInfo) -> ! {
 
 pub mod scheduler;
 pub mod stream;
+pub mod allocator;
+pub mod evolution;
 
 pub struct JarvisKernel;
 

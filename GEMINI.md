@@ -1,40 +1,47 @@
-# THE OMEGA ARCHITECTURAL STANDARD: PROJECT JARVIS
+# THE OMEGA ARCHITECTURAL STANDARD: PROJECT JARVIS (REV. 2.0)
 
-This document serves as the foundational law for all Gemini-led development on Project JARVIS. These rules are absolute. Any deviation is a critical failure.
+This document is the supreme law of Project JARVIS. Any violation results in immediate rejection by the kernel or the CI gatekeeper.
 
 ## 1. Core Mandates
 
 ### 1.1. Language Substrate
-- **Rust-Exclusive Toolchain:** The compiler, runtime, and kernel MUST be built in pure Rust. No TypeScript, No C++, No external parser generators.
-- **Zero-Dependency Policy:** Third-party crates are forbidden. All logic (Lexer, Parser, AST, VM) must be handcrafted at the bit-level to ensure maximum optimization.
+- **Rust-Exclusive Toolchain:** Pure Rust only. `no_std` mandatory for kernel/runtime.
+- **Zero-Dependency Policy:** No external crates. All logic must be handcrafted.
 
 ### 1.2. Performance Driven Development (PDD)
-- **Mandatory Big-O Signatures:** Every function must declare its mathematical complexity (e.g., $O(1)$, $O(N)$). 
-- **Static Verification:** The compiler MUST reject any code where the analyzed complexity exceeds the declared complexity.
-- **Entropy Budgeting:** All modules must adhere to physical energy/compute budgets (`budget` blocks) verified at compile-time.
+- **Mandatory Big-O Signatures:** Every function MUST declare complexity: `// Time: O(N), Space: O(1)`.
+- **Static Verification:** The verifier rejects code exceeding these bounds.
 
-### 1.3. Syntax-Level TDD
-- **Verification Primitives:** Tests are first-class language citizens (`verify` blocks).
-- **Forced Compilation:** A module without passing test suites is physically incapable of emitting a binary.
+### 1.3. Environmentally Friendly Driven Development (EFDD)
+- **Entropy Budgeting:** `budget { power: X_nj }` blocks are mandatory.
+- **Wait-Free Architecture:** Mutexes and Spinlocks are strictly FORBIDDEN. Use atomic primitives or lock-free structures.
+- **Cache-Line Alignment:** All structures $\ge 64$ bytes MUST be aligned to 64 bytes to minimize bus energy.
 
-## 2. Advanced Paradigms
+### 1.4. Eudaimonia Driven Development (EuDD)
+- **Formal Contracts:** `contract { ensures X; }` must guard all state mutations.
+- **Human Sovereignty:** Code that extracts private data without explicit, verifiable consent is mathematically rejected.
 
-### 2.1. Neuro-Symbolic Computation
-- **Temporal Memory:** Support for persistent AI state (`memory`) across stream executions.
-- **Self-Evolution:** `evolve` blocks allow the compiler to autonomously mutate and benchmark logic.
-- **Formal Contract Guards:** All self-modifying code MUST satisfy a first-order logic `contract`.
+## 2. Repository Governance & CI Laws
 
-### 2.2. Distributed Swarm Intelligence
-- **Native Consensus:** `sync` blocks enforce Raft/Gossip protocols at the language level.
-- **Knowledge Addressability:** Support for semantically-indexed storage (`knowledge`) using vector embeddings.
+### 2.1. Mutation Testing (The TDD Gatekeeper)
+- The CI pipeline MUST perform AST mutation testing. If a test suite fails to detect a mutation, the Pull Request is REJECTED.
 
-### 2.3. Omni-Agnostic Execution
-- **AI-First Design:** Syntax is optimized for agentic synthesis and token efficiency, not human readability.
-- **Hardware Agnosticism:** TG-IR (Tensor-Graph IR) allows seamless execution across NPU, GPU, and MCU without manual kernel mapping.
+### 2.2. Cryptographic Integrity
+- 100% of commits MUST be cryptographically signed (GPG/SSH). Unsigned commits are automatically purged.
+
+### 2.3. The ADR-First Law
+- No structural changes without an Architecture Decision Record (ADR) including PDD/EFDD pre-calculations.
+
+### 2.4. Hermetic Builds & Entropy Control
+- **Determinism:** Bit-for-bit reproducible binaries are mandatory.
+- **Scout Rule:** A PR MUST NOT increase the module's overall cyclomatic entropy density.
+
+### 2.5. DDD & Git-Flow
+- **Domain-Driven Design:** Every GitHub Issue must define the Ubiquitous Language and context map.
+- **Conventional Commits:** `feat:`, `fix:`, `refactor:`, `perf:`, `chore:`.
 
 ## 3. Engineering Rigor
-- **Git-Flow Enforcement:** Strict adherence to `feature/` and `core/` branching.
-- **Conventional Commits:** Every change must follow the semantic commit standard.
-- **High-Class Maintenance:** No shortcuts. No technical debt. No legacy assumptions.
+- **Verify Blocks:** Tests are syntax primitives. No binary emission without passing `verify` blocks.
+- **Zero Technical Debt:** Code is a mathematical guarantee, not a "guess."
 
-**JARVIS IS A MATHEMATICAL GUARANTEE OF EFFICIENCY.**
+**JARVIS: EFFICIENCY IS MORALITY.**
