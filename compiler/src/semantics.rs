@@ -29,8 +29,18 @@ impl Analyzer {
     }
 
     fn verify_function_complexity(&self, func: &Node, declared: &str) -> Result<(), String> {
-        if let Node::Function { name, .. } = func {
-            let actual = "1"; // Stubbed for now
+        if let Node::Function { name, body, .. } = func {
+            // Count loops in body
+            let loops = Self::count_loops(body);
+            
+            let actual = if loops == 0 {
+                "1"
+            } else if loops == 1 {
+                "N"
+            } else {
+                "N^2" // Simplified nesting logic
+            };
+            
             if actual != declared {
                 return Err(format!(
                     "Complexity mismatch in function '{}': Declared O({}), Analyzed O({})",
@@ -39,5 +49,21 @@ impl Analyzer {
             }
         }
         Ok(())
+    }
+
+    fn count_loops(body: &Vec<crate::ast::Stmt>) -> usize {
+        let mut count = 0;
+        for stmt in body {
+            if let crate::ast::Stmt::While { body: inner_body, .. } = stmt {
+                count += 1 + Self::count_loops(inner_body);
+            }
+            if let crate::ast::Stmt::If { then_branch, else_branch, .. } = stmt {
+                count += Self::count_loops(then_branch);
+                if let Some(eb) = else_branch {
+                    count += Self::count_loops(eb);
+                }
+            }
+        }
+        count
     }
 }

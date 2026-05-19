@@ -5,13 +5,34 @@ pub enum Token<'a> {
     Func,
     Verify,
     Test,
+    Let,
+    Return,
+    If,
+    Else,
+    For,
+    While,
+    TypeI32,
+    TypeF32,
+    TypeStream,
     Identifier(&'a str),
     BigO(&'a str),
     StringLiteral(&'a str),
+    NumberLiteral(&'a str),
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Assign,
+    Equals,
+    Comma,
+    Colon,
+    Semicolon,
     OpenBrace,
     CloseBrace,
     OpenParen,
     CloseParen,
+    OpenBracket,
+    CloseBracket,
     Arrow,
     Eof,
     Unknown,
@@ -40,14 +61,56 @@ impl<'a> Lexer<'a> {
             return self.lex_identifier_or_keyword();
         }
 
+        if c.is_digit(10) {
+            return self.lex_number_literal();
+        }
+
         match c {
             '"' => self.lex_string_literal(),
             '{' => { self.consume(); Token::OpenBrace }
             '}' => { self.consume(); Token::CloseBrace }
             '(' => { self.consume(); Token::OpenParen }
             ')' => { self.consume(); Token::CloseParen }
+            '[' => { self.consume(); Token::OpenBracket }
+            ']' => { self.consume(); Token::CloseBracket }
+            '+' => { self.consume(); Token::Plus }
+            '-' => { 
+                self.consume();
+                if self.peek() == Some('>') {
+                    self.consume();
+                    Token::Arrow
+                } else {
+                    Token::Minus
+                }
+            }
+            '*' => { self.consume(); Token::Star }
+            '/' => { self.consume(); Token::Slash }
+            '=' => {
+                self.consume();
+                if self.peek() == Some('=') {
+                    self.consume();
+                    Token::Equals
+                } else {
+                    Token::Assign
+                }
+            }
+            ',' => { self.consume(); Token::Comma }
+            ':' => { self.consume(); Token::Colon }
+            ';' => { self.consume(); Token::Semicolon }
             _ => { self.consume(); Token::Unknown }
         }
+    }
+
+    fn lex_number_literal(&mut self) -> Token<'a> {
+        let start = self.cursor;
+        while let Some(c) = self.peek() {
+            if c.is_digit(10) || c == '.' {
+                self.consume();
+            } else {
+                break;
+            }
+        }
+        Token::NumberLiteral(&self.source[start..self.cursor])
     }
 
     fn lex_string_literal(&mut self) -> Token<'a> {
@@ -100,12 +163,25 @@ impl<'a> Lexer<'a> {
             "func" => Token::Func,
             "verify" => Token::Verify,
             "test" => Token::Test,
+            "let" => Token::Let,
+            "return" => Token::Return,
+            "if" => Token::If,
+            "else" => Token::Else,
+            "for" => Token::For,
+            "while" => Token::While,
+            "i32" => Token::TypeI32,
+            "f32" => Token::TypeF32,
+            "Stream" => Token::TypeStream,
             _ => Token::Identifier(text),
         }
     }
 
     fn peek(&self) -> Option<char> {
         self.source[self.cursor..].chars().next()
+    }
+
+    fn peek_next(&self) -> Option<char> {
+        self.source[self.cursor..].chars().nth(1)
     }
 
     fn consume(&mut self) {
@@ -131,9 +207,5 @@ impl<'a> Lexer<'a> {
                 break;
             }
         }
-    }
-
-    fn peek_next(&self) -> Option<char> {
-        self.source[self.cursor..].chars().nth(1)
     }
 }
