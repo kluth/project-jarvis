@@ -14,6 +14,7 @@ pub mod stream;
 pub mod allocator;
 pub mod evolution;
 pub mod substrate;
+pub mod hal;
 
 pub struct JarvisKernel;
 

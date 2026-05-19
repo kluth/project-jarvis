@@ -36,12 +36,14 @@ fn main() {
                 Ok(_) => {
                     println!("Compilation Successful: PDD/EFDD Verified.");
                     
-                    // 2. AOT Native Lowering
+                    // 2. AOT Native ELF Lowering
                     let mut backend = AotBackend::new();
-                    match backend.lower(&ast) {
-                        Ok(image) => {
-                            println!("AOT Native Image Generated: {} instructions.", image.instructions.len());
-                            println!("Target: Custom Jarvis-ISA (Energy-Aware).");
+                    match backend.lower_to_elf(&ast) {
+                        Ok(elf) => {
+                            println!("AOT Production ELF Generated.");
+                            println!("Code Size: {} bytes.", elf.code_section.len());
+                            println!("Metadata: {}.", String::from_utf8_lossy(&elf.metadata_section));
+                            println!("Target: Custom Jarvis-ISA (Machine-Native).");
                         }
                         Err(e) => println!("Backend Error: {}", e),
                     }
