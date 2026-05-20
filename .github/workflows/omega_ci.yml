@@ -2,9 +2,9 @@ name: JARVIS Omega CI Gatekeeper
 
 on:
   push:
-    branches: [ main, core/**, feature/**, production/** ]
+    branches: [ main, core/**, feature/**, production/**, evolution/** ]
   pull_request:
-    branches: [ main, core/**, production/** ]
+    branches: [ main, core/**, production/**, evolution/** ]
 
 jobs:
   verify:
