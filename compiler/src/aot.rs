@@ -17,6 +17,18 @@ pub enum Opcode {
     StreamAdv,
     /// O(1) Atomic Swap (for Evolution).
     AtomicSwap,
+    /// O(Pixels) Render UI Frame.
+    UIRender,
+    /// O(N) Apply Layout.
+    UILayout,
+    /// O(1) Draw UI Component.
+    UIComponent,
+    /// O(log N) Swarm Consensus.
+    CommSync,
+    /// O(1) Swarm Gossip.
+    CommGossip,
+    /// O(1) Swarm Publish.
+    CommPublish,
     /// Halt execution.
     Halt,
 }

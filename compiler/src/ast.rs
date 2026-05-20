@@ -3,6 +3,9 @@ pub enum Type {
     I32,
     F32,
     Stream,
+    PixelStream,
+    FrameBuffer,
+    VectorCanvas,
     Unknown,
 }
 
@@ -108,5 +111,19 @@ pub enum Node<'a> {
     Test {
         name: &'a str,
         body: Vec<Stmt<'a>>,
+    },
+    Render {
+        name: &'a str,
+        params: Vec<&'a str>,
+        body: Vec<Node<'a>>,
+        verification: Option<Box<Node<'a>>>,
+    },
+    Layout {
+        kind: &'a str,
+        content: Vec<Node<'a>>,
+    },
+    Component {
+        kind: &'a str,
+        args: Vec<Expr<'a>>,
     },
 }

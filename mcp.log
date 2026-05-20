@@ -1,0 +1,37 @@
+
+--- MCP SESSION START ---
+IN: {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+OUT: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"prompts":{"listChanged":false}},"serverInfo":{"name":"jrvc-nci","version":"1.0.0"}}}
+
+--- MCP SESSION START ---
+IN: {"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"gemini-cli-mcp-client","version":"0.42.0"}},"jsonrpc":"2.0","id":0}
+OUT: {"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"prompts":{"listChanged":false}},"serverInfo":{"name":"jrvc-nci","version":"1.0.0"}}}
+IN: {"method":"notifications/initialized","jsonrpc":"2.0"}
+IN: {"method":"prompts/list","params":{},"jsonrpc":"2.0","id":1}
+OUT: {"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}
+IN: {"method":"tools/list","params":{},"jsonrpc":"2.0","id":2}
+OUT: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"query_ast","description":"Inspect AST","inputSchema":{"type":"object","properties":{"source":{"type":"string"}}}},{"name":"analyze_energy","description":"Energy breakdown","inputSchema":{"type":"object","properties":{"fn_name":{"type":"string"}}}},{"name":"run_mutants","description":"Mutation testing","inputSchema":{"type":"object","properties":{"source":{"type":"string"}}}},{"name":"apply_atomic_fix","description":"Repair module","inputSchema":{"type":"object","properties":{"patch":{"type":"string"}}}}]}}
+IN: {"method":"resources/list","params":{},"jsonrpc":"2.0","id":3}
+OUT: {"jsonrpc":"2.0","id":3,"error":{"code":-32601,"message":"Method not found"}}
+
+--- MCP SESSION START ---
+IN: {"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"gemini-cli-mcp-client","version":"0.42.0"}},"jsonrpc":"2.0","id":0}
+OUT: {"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"prompts":{"listChanged":false}},"serverInfo":{"name":"jrvc-nci","version":"1.0.0"}}}
+IN: {"method":"notifications/initialized","jsonrpc":"2.0"}
+IN: {"method":"prompts/list","params":{},"jsonrpc":"2.0","id":1}
+OUT: {"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}
+IN: {"method":"tools/list","params":{},"jsonrpc":"2.0","id":2}
+OUT: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"query_ast","description":"Inspect AST","inputSchema":{"type":"object","properties":{"source":{"type":"string"}}}},{"name":"analyze_energy","description":"Energy breakdown","inputSchema":{"type":"object","properties":{"fn_name":{"type":"string"}}}},{"name":"run_mutants","description":"Mutation testing","inputSchema":{"type":"object","properties":{"source":{"type":"string"}}}},{"name":"apply_atomic_fix","description":"Repair module","inputSchema":{"type":"object","properties":{"patch":{"type":"string"}}}}]}}
+IN: {"method":"resources/list","params":{},"jsonrpc":"2.0","id":3}
+OUT: {"jsonrpc":"2.0","id":3,"error":{"code":-32601,"message":"Method not found"}}
+
+--- MCP SESSION START ---
+IN: {"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"gemini-cli-mcp-client","version":"0.42.0"}},"jsonrpc":"2.0","id":0}
+OUT: {"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"prompts":{"listChanged":false}},"serverInfo":{"name":"jrvc-nci","version":"1.0.0"}}}
+IN: {"method":"notifications/initialized","jsonrpc":"2.0"}
+IN: {"method":"prompts/list","params":{},"jsonrpc":"2.0","id":1}
+OUT: {"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}
+IN: {"method":"tools/list","params":{},"jsonrpc":"2.0","id":2}
+OUT: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"query_ast","description":"Inspect AST","inputSchema":{"type":"object","properties":{"source":{"type":"string"}}}},{"name":"analyze_energy","description":"Energy breakdown","inputSchema":{"type":"object","properties":{"fn_name":{"type":"string"}}}},{"name":"run_mutants","description":"Mutation testing","inputSchema":{"type":"object","properties":{"source":{"type":"string"}}}},{"name":"apply_atomic_fix","description":"Repair module","inputSchema":{"type":"object","properties":{"patch":{"type":"string"}}}}]}}
+IN: {"method":"resources/list","params":{},"jsonrpc":"2.0","id":3}
+OUT: {"jsonrpc":"2.0","id":3,"error":{"code":-32601,"message":"Method not found"}}

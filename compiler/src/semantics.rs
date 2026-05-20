@@ -56,34 +56,47 @@ impl OmegaVerifier {
 
     /// PDD & EFDD Proof: Validates asymptotic bounds and energy limits.
     /// eTDD: Validates mandatory existence of verify blocks.
-    fn prove_pdd_and_efdd(&self, func: &Node, expected_complexity: &str) -> Result<(), String> {
-        if let Node::Function { body, name, verification, .. } = func {
-            // 0. eTDD Proof: Mandatory verify block
-            if verification.is_none() {
-                return Err(format!(
-                    "eTDD VIOLATION in function '{}': Implementation detected without mandatory 'verify' block.",
-                    name
-                ));
-            }
+    fn prove_pdd_and_efdd(&self, node: &Node, expected_complexity: &str) -> Result<(), String> {
+        match node {
+            Node::Function { body, name, verification, .. } => {
+                // 0. eTDD Proof: Mandatory verify block
+                if verification.is_none() {
+                    return Err(format!(
+                        "eTDD VIOLATION in function '{}': Implementation detected without mandatory 'verify' block.",
+                        name
+                    ));
+                }
 
-            // 1. PDD Proof
-            let max_depth = self.analyze_loop_nesting(body);
-            let actual_complexity = match max_depth {
-                0 => "1",
-                1 => "N",
-                2 => "N^2",
-                _ => "N^k",
-            };
+                // 1. PDD Proof
+                let max_depth = self.analyze_loop_nesting(body);
+                let actual_complexity = match max_depth {
+                    0 => "1",
+                    1 => "N",
+                    2 => "N^2",
+                    _ => "N^k",
+                };
 
-            if actual_complexity != expected_complexity {
-                return Err(format!(
-                    "PDD VIOLATION in function '{}': Declared {}, Proved {}.",
-                    name, expected_complexity, actual_complexity
-                ));
+                if actual_complexity != expected_complexity {
+                    return Err(format!(
+                        "PDD VIOLATION in function '{}': Declared {}, Proved {}.",
+                        name, expected_complexity, actual_complexity
+                    ));
+                }
+                
+                // 2. EFDD Proof
+                self.prove_efdd_bounds(body, name)?;
             }
-            
-            // 2. EFDD Proof
-            self.prove_efdd_bounds(body, name)?;
+            Node::Render { body, name, verification, .. } => {
+                if verification.is_none() {
+                    return Err(format!("eTDD VIOLATION in render '{}': Missing verify block.", name));
+                }
+                // Render complexity is O(N) where N is number of components
+                let actual_complexity = "N"; 
+                if actual_complexity != expected_complexity && expected_complexity != "Pixels" {
+                    return Err(format!("PDD VIOLATION in render '{}': Expected {}, Proved {}.", name, expected_complexity, actual_complexity));
+                }
+            }
+            _ => {}
         }
         Ok(())
     }

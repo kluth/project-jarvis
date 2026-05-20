@@ -80,6 +80,13 @@ impl<'a> Parser<'a> {
                     }
                     content.push(func);
                 }
+                Token::Render => {
+                    let mut render = self.parse_render_block()?;
+                    if let Node::Render { ref mut verification, .. } = render {
+                        *verification = last_verify.take().map(Box::new);
+                    }
+                    content.push(render);
+                }
                 _ => self.advance(),
             }
         }
@@ -132,6 +139,9 @@ impl<'a> Parser<'a> {
             Token::TypeI32 => { self.advance(); Ok(Type::I32) },
             Token::TypeF32 => { self.advance(); Ok(Type::F32) },
             Token::TypeStream => { self.advance(); Ok(Type::Stream) },
+            Token::TypePixelStream => { self.advance(); Ok(Type::PixelStream) },
+            Token::TypeFrameBuffer => { self.advance(); Ok(Type::FrameBuffer) },
+            Token::TypeVectorCanvas => { self.advance(); Ok(Type::VectorCanvas) },
             Token::Identifier(_) => { self.advance(); Ok(Type::Unknown) },
             _ => Err("Expected Type".to_string())
         }
@@ -489,6 +499,81 @@ impl<'a> Parser<'a> {
             self.advance();
         }
         Ok(Stmt::Assert { condition })
+    }
+
+    fn parse_render_block(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::Render)?;
+        let name = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "unnamed_render" };
+
+        self.expect(Token::OpenParen)?;
+        let mut params = Vec::new();
+        while self.current_token != Token::CloseParen && self.current_token != Token::Eof {
+            if let Token::Identifier(pname) = self.current_token {
+                self.advance();
+                params.push(pname);
+                if self.current_token == Token::Comma {
+                    self.advance();
+                }
+            } else { break; }
+        }
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        
+        let mut body = Vec::new();
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            match self.current_token {
+                Token::Layout => body.push(self.parse_layout_block()?),
+                Token::Component => body.push(self.parse_component_statement()?),
+                _ => self.advance(),
+            }
+        }
+        self.expect(Token::CloseBrace)?;
+        Ok(Node::Render { name, params, body, verification: None })
+    }
+
+    fn parse_layout_block(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::Layout)?;
+        let kind = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "box" };
+
+        self.expect(Token::OpenBrace)?;
+        let mut content = Vec::new();
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            match self.current_token {
+                Token::Layout => content.push(self.parse_layout_block()?),
+                Token::Component => content.push(self.parse_component_statement()?),
+                _ => self.advance(),
+            }
+        }
+        self.expect(Token::CloseBrace)?;
+        Ok(Node::Layout { kind, content })
+    }
+
+    fn parse_component_statement(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::Component)?;
+        let kind = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "Unknown" };
+
+        self.expect(Token::OpenParen)?;
+        let mut args = Vec::new();
+        while self.current_token != Token::CloseParen && self.current_token != Token::Eof {
+            args.push(self.parse_expression()?);
+            if self.current_token == Token::Comma {
+                self.advance();
+            }
+        }
+        self.expect(Token::CloseParen)?;
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Node::Component { kind, args })
     }
 
     fn parse_verify_block(&mut self) -> Result<Node<'a>, String> {

@@ -71,9 +71,27 @@ impl AotBackend {
                 }
                 self.emit(Opcode::Halt, 0.01);
             }
+            Node::Render { body, .. } => {
+                for child in body {
+                    self.lower_node(child)?;
+                }
+                self.emit(Opcode::UIRender, 12000.0);
+            }
+            Node::Layout { content, .. } => {
+                for child in content {
+                    self.lower_node(child)?;
+                }
+                self.emit(Opcode::UILayout, 500.0);
+            }
+            Node::Component { args, .. } => {
+                for arg in args {
+                    self.lower_expr(arg)?;
+                }
+                self.emit(Opcode::UIComponent, 150.0);
+            }
             Node::ComplexityBlock { content, .. } => {
-                for func in content {
-                    self.lower_node(func)?;
+                for child in content {
+                    self.lower_node(child)?;
                 }
             }
             _ => {}
@@ -109,6 +127,18 @@ impl AotBackend {
                 for s in body {
                     self.lower_stmt(s)?;
                 }
+            }
+            Stmt::Sync { body, .. } => {
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
+                self.emit(Opcode::CommSync, 2000.0);
+            }
+            Stmt::Gossip { .. } => {
+                self.emit(Opcode::CommGossip, 150.0);
+            }
+            Stmt::Publish { .. } => {
+                self.emit(Opcode::CommPublish, 150.0);
             }
             _ => {}
         }
@@ -163,6 +193,12 @@ impl AotBackend {
                 Opcode::AssertContract => bytes.push(0x05),
                 Opcode::StreamAdv => bytes.push(0x06),
                 Opcode::AtomicSwap => bytes.push(0x07),
+                Opcode::UIRender => bytes.push(0x08),
+                Opcode::UILayout => bytes.push(0x09),
+                Opcode::UIComponent => bytes.push(0x0A),
+                Opcode::CommSync => bytes.push(0x0B),
+                Opcode::CommGossip => bytes.push(0x0C),
+                Opcode::CommPublish => bytes.push(0x0D),
                 Opcode::Halt => bytes.push(0x00),
             }
         }
