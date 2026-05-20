@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "jarvis-mcp": {
+      "command": "jarvis-compiler",
+      "args": [
+        "--mcp"
+      ]
+    }
+  }
+}
