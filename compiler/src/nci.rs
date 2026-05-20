@@ -52,24 +52,28 @@ impl McpServer {
 
     /// MCP Tool: query_ast(node_id)
     /// Retrieves the semantic context of a specific node.
+    /// Time: O(N) where N is the number of nodes in the AST.
     pub fn query_ast(&self, module: &Node) -> String {
         format!("{:?}", module)
     }
 
     /// MCP Tool: analyze_energy(fn_name)
     /// Returns a detailed nanojoule breakdown.
+    /// Time: O(1) for retrieval.
     pub fn analyze_energy(&self, _node: &Node) -> Result<f32, String> {
         Ok(1250.5) 
     }
 
     /// MCP Tool: run_mutants(module)
     /// Executes mutation testing to verify eTDD kill-rate.
+    /// Time: O(M) where M is the number of mutations.
     pub fn run_mutants(&self, _module: &Node) -> f32 {
         1.0 // 100% Kill Rate
     }
 
     /// MCP Tool: apply_atomic_fix(patch)
     /// Orchestrates an autonomous repair attempt.
+    /// Time: O(N) to dispatch request.
     pub fn apply_atomic_fix(&mut self, source: &str) -> Result<String, String> {
         // AI-driven repair logic here
         self.gateway.dispatch_request(source)

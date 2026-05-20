@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_omega_verification_pass() {
-        let source = "module Audio complexity O(1) { func init() {} }";
+        let source = "module Audio complexity O(1) { verify { test \"init\" {} } func init() {} }";
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         let ast = parser.parse_module().unwrap();
@@ -58,7 +58,7 @@ mod tests {
     #[test]
     fn test_omega_verification_fail() {
         // Declared O(N^2) but it's actually O(1)
-        let source = "module Audio complexity O(N^2) { func init() {} }";
+        let source = "module Audio complexity O(N^2) { verify { test \"init\" {} } func init() {} }";
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
         let ast = parser.parse_module().unwrap();

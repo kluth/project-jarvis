@@ -77,7 +77,7 @@ impl OmegaVerifier {
 
             if actual_complexity != expected_complexity {
                 return Err(format!(
-                    "PDD FORMAL PROOF FAILED in function '{}': Declared {}, Proved {}.",
+                    "PDD VIOLATION in function '{}': Declared {}, Proved {}.",
                     name, expected_complexity, actual_complexity
                 ));
             }
