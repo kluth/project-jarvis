@@ -57,6 +57,6 @@ pub fn set_hal(instance: &'static dyn HardwareInterface) {
 /// Time: O(1).
 pub fn get_hal() -> &'static dyn HardwareInterface {
     unsafe {
-        HAL_INSTANCE.expect("HAL not initialized. Kernel failure.")
+        HAL_INSTANCE.expect("HAL not initialized. Substrate failure.")
     }
 }

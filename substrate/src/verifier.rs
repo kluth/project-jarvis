@@ -54,7 +54,7 @@ impl Verifier<Unverified> {
 
 impl Verifier<Verified> {
     /// Time: O(1), Space: O(1)
-    /// Consumes the verified node to allow injection into the live kernel.
+    /// Consumes the verified node to allow injection into the live substrate.
     pub fn take_node(self) -> *mut dyn StreamNode {
         self.node
     }

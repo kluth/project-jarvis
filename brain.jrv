@@ -1,20 +1,19 @@
 module Brain
 complexity O(1)
 {
-    budget { power: 1000_nj }
+    verify {
+        test "thought_latency" {
+            assert(true);
+        }
+    }
 
     func process_thought(input: Stream) -> Stream {
+        budget { power: 1000_nj }
         memory ShortTermContext: Stream [512]
         
         evolve {
             let response = input * 2.0;
             return response;
         }
-    }
-}
-
-verify {
-    test "thought_latency" {
-        assert(true);
     }
 }

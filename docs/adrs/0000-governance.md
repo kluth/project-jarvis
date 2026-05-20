@@ -7,11 +7,11 @@ Proposed
 Project JARVIS requires a flagship open-source structure that facilitates scaling from 8-bit MCUs to distributed supercomputers while enforcing architectural perfection.
 
 ## Decision
-We adopt a monorepo structure with strict isolation between the toolchain, the kernel, and the language specifications.
+We adopt a monorepo structure with strict isolation between the toolchain, the substrate, and the language specifications.
 
 ### Repository Layout
 - `/compiler`: Handcrafted Rust-based OMNI-Target compiler.
-- `/kernel`: Bare-metal JARVIS OS kernel.
+- `/substrate`: Bare-metal JARVIS Universal Substrate substrate.
 - `/specs`: Formal language and PDD definitions.
 - `/docs/adrs`: Architecture Decision Records.
 - `/stdlib`: The JARVIS core library (Test-First).

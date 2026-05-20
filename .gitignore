@@ -1,5 +1,5 @@
 /target/
 compiler/target/
-kernel/target/
+substrate/target/
 **/*.rs.bk
 .DS_Store

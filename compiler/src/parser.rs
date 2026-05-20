@@ -66,15 +66,19 @@ impl<'a> Parser<'a> {
         self.expect(Token::OpenBrace)?;
         
         let mut content = Vec::new();
+        let mut last_verify = None;
+
         while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
             match self.current_token {
-                Token::Func => content.push(self.parse_function()?),
-                Token::Budget => {
-                    // Budget at this level is treated as a metadata node or ignored if handled elsewhere
-                    // For now, let's parse it and we can wrap functions or handle it as a sibling
-                    let _stmt = self.parse_budget_statement()?;
-                    // We need a way to store Stmt in Node or a new Node variant
-                    // Let's just skip it for now but advance properly
+                Token::Verify => {
+                    last_verify = Some(self.parse_verify_block()?);
+                }
+                Token::Func => {
+                    let mut func = self.parse_function()?;
+                    if let Node::Function { ref mut verification, .. } = func {
+                        *verification = last_verify.take().map(Box::new);
+                    }
+                    content.push(func);
                 }
                 _ => self.advance(),
             }
@@ -120,7 +124,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::OpenBrace)?;
         let body = self.parse_block()?;
         
-        Ok(Node::Function { name, params, return_ty, body })
+        Ok(Node::Function { name, params, return_ty, body, verification: None })
     }
 
     fn parse_type(&mut self) -> Result<Type, String> {

@@ -23,7 +23,7 @@ The `memory` primitives in JARVIS hold persistent state. Hot-swapping must not c
 - **Static Proof:** The compiler performs a **Layout Isomorphism Check**. It calculates the bit-offset and alignment of every field in the `memory` block. If the new code's expected layout deviates from the legacy layout, the swap is rejected.
 - **Zero-Copy Handover:** The pointer to the persistent `memory` block is passed as a dependency to the new IR node. No data is moved; only the ownership of the context tensor is transferred.
 
-## 4. In-Kernel Verifier (The Gatekeeper)
+## 4. In-Substrate Verifier (The Gatekeeper)
 Before a swap, the code must pass the "Verification Gauntlet":
 
 - **PDD Termination Proof:** The verifier identifies back-edges in the TG-IR. All loops must have a compiler-detectable static bound.

@@ -55,10 +55,17 @@ impl OmegaVerifier {
     }
 
     /// PDD & EFDD Proof: Validates asymptotic bounds and energy limits.
-    /// PDD: Mathematical induction over CFG loop depth.
-    /// EFDD: Nanojoule summation over worst-case instruction path.
+    /// eTDD: Validates mandatory existence of verify blocks.
     fn prove_pdd_and_efdd(&self, func: &Node, expected_complexity: &str) -> Result<(), String> {
-        if let Node::Function { body, name, .. } = func {
+        if let Node::Function { body, name, verification, .. } = func {
+            // 0. eTDD Proof: Mandatory verify block
+            if verification.is_none() {
+                return Err(format!(
+                    "eTDD VIOLATION in function '{}': Implementation detected without mandatory 'verify' block.",
+                    name
+                ));
+            }
+
             // 1. PDD Proof
             let max_depth = self.analyze_loop_nesting(body);
             let actual_complexity = match max_depth {

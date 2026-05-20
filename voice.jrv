@@ -1,14 +1,20 @@
 module Voice
-complexity O(N) // PDD: Static proof required for O(N)
+complexity O(N)
 {
-    // EFDD: Energy budget enforced for this function
-    budget { power: 5000_nj }
+    // eTDD: Mandatory verification proof for the subsequent function
+    verify {
+        test "voice_stream_processing" {
+            let result = process_stream(100);
+            assert(result > 0);
+        }
+    }
 
     func process_stream(input: Stream) -> I32 {
+        budget { power: 5000_nj }
+        
         let x = 10;
         let y = 20;
         
-        // Contract: Ensures data sovereignty and safety
         contract { ensures result > 0; }
 
         while x < y {
@@ -16,13 +22,5 @@ complexity O(N) // PDD: Static proof required for O(N)
         }
 
         return x;
-    }
-}
-
-verify {
-    test "voice_stream_processing" {
-        // TDD: Mandatory verification block
-        let result = process_stream(100);
-        assert(result > 0);
     }
 }

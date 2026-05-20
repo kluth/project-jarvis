@@ -100,6 +100,7 @@ pub enum Node<'a> {
         params: Vec<&'a str>,
         return_ty: Option<Type>,
         body: Vec<Stmt<'a>>,
+        verification: Option<Box<Node<'a>>>,
     },
     VerifyBlock {
         tests: Vec<Node<'a>>,

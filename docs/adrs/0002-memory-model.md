@@ -16,7 +16,7 @@ JARVIS implements a **Deterministic Stream-Graph Concurrency Model**.
 
 ### Concurrency
 - **Lock-Free Channels:** Built-in atomic ring buffers for stream communication.
-- **No Threads:** The kernel uses an asynchronous executor that polls stream-graphs directly on bare metal.
+- **No Threads:** The substrate uses an asynchronous executor that polls stream-graphs directly on bare metal.
 - **NUMA Awareness:** The "Macro" profile automatically maps graph nodes to CPU cores to minimize cache misses.
 
 ## Consequences

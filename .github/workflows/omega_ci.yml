@@ -27,7 +27,7 @@ jobs:
           
       - name: "Enforcement: Kernel Substrate Integrity"
         run: |
-          cd kernel && cargo check
+          cd substrate && cargo check
 
       - name: "Enforcement: Mutation Testing (100% Kill Rate)"
         run: |

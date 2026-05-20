@@ -16,9 +16,9 @@ pub mod evolution;
 pub mod substrate;
 pub mod hal;
 
-pub struct JarvisKernel;
+pub struct JarvisSubstrate;
 
-impl JarvisKernel {
+impl JarvisSubstrate {
     pub fn boot() -> ! {
         // Initialize hardware, then start the stream-graph executor
         loop {

@@ -1,19 +1,20 @@
-# JARVIS: Future-Proof Roadmap
+# THE OMEGA VISION: JARVIS AS A UNIVERSAL SUBSTRATE
 
-## Phase 6: Hardware-Agnostic Kernel (The Omega Kernel)
-- [ ] Implement `no_std` JARVIS VM for ARM/RISC-V.
-- [ ] Native stream handling via DMA (Direct Memory Access).
-- [ ] PDD-enforced hardware scheduling.
+Project JARVIS is a Standalone Universal Programming Language and Execution Substrate. It exists to bridge human intent and machine autonomy with mathematical certainty.
 
-## Phase 7: AI Hardware Offloading
-- [ ] Tensor instruction set for JARVIS IR.
-- [ ] Native GPU/NPU kernels generated from `.jrv` blocks.
-- [ ] Real-time latency guarantees via compile-time trace analysis.
+## 1. Philosophical Sovereignty
+We have severed all ties to legacy operating systems. JARVIS is an omni-architecture substrate that runs natively on microcontrollers, workstations, and cloud nodes via a unified **Tensor-Graph IR (TG-IR)**.
 
-## Phase 8: Distributed Omni-Target
-- [ ] Cluster profile for JARVIS VM.
-- [ ] Automatic parallelization of Stream-Graphs across NUMA nodes.
-- [ ] Zero-copy stream migration between nodes.
+## 2. Mathematical Integrity (eTDD & PDD)
+Efficiency is a moral imperative. JARVIS enforces:
+- **eTDD (Enforced Test-Driven Development):** Tests are the mandatory skeleton of logic. Code without a valid verification proof is physically incapable of existing.
+- **PDD (Performance-Driven Development):** High complexity is a bug. The compiler enforces strict asymptotic budgets, ensuring predictable execution across the global swarm.
 
-## Vision
-JARVIS is not just a language; it is a mathematical guarantee of efficiency. By enforcing PDD at the compiler level, we eliminate the human margin for error in real-time AI systems.
+## 3. AI-Native Symbiosis
+The JARVIS compiler is an active participant in the engineering lifecycle. Through the **Neuro-Compiler Interface (NCI)** and our **Multi-Agent Gateway (MAG)**, the compiler communicates with AI agents (Claude, GPT, Gemini) to autonomously repair, optimize, and evolve logic.
+
+## 4. Absolute Transparency
+- **Data Biodegradability (DBD):** Sensitive data is cryptographically purged the microsecond it loses scope.
+- **Provenance Purity (PFDD):** All logic and weights are verified via zero-knowledge proofs.
+
+**JARVIS IS THE MATHEMATICAL GUARANTEE OF PROGRESS.**

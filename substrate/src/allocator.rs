@@ -68,7 +68,7 @@ impl EfddArenaAllocator {
     /// Registers a pointer for deferred reclamation (RCU).
     /// Time: O(1).
     pub fn defer_reclaim(&self, _ptr: *mut u8) {
-        // In a production kernel, this would add to a wait-free list
+        // In a production substrate, this would add to a wait-free list
         // linked to the current epoch.
         let epoch = self._global_epoch.load(Ordering::Acquire);
         let _ = epoch; // Simulated RCU logic

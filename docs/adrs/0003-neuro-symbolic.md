@@ -16,7 +16,7 @@ Variables declared as `memory` persist between function calls across a stream. T
 An `evolve` block signals to the compiler that the internal logic can be mutated for performance. During compilation, JARVIS-LLVM (or custom backend) will benchmark multiple implementation candidates (e.g., SIMD vs. Neural vs. DSP) to find the optimal execution path for the target hardware.
 
 ### 3. Neural-Mapping (`neural`)
-Syntax for direct mapping of tensor operations to NPU/GPU kernels.
+Syntax for direct mapping of tensor operations to NPU/GPU substrates.
 Example: `let res = data @ weights;` (Neural Dot Product).
 
 ## Consequences

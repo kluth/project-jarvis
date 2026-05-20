@@ -22,7 +22,7 @@ This allows agents to `publish` and `query` knowledge across the swarm based on 
 The `reflect` primitive allows an agent to inspect its own bytecode, execution metrics, and entropy state, enabling high-fidelity self-optimization loops.
 
 ### 4. Tensor-Graph IR (TG-IR)
-The compiler output is a hardware-agnostic Tensor-Graph IR. The microkernel (JARVIS-K) autonomously schedules nodes of this graph to the most efficient available hardware (SIMD, NPU, or GPU) without developer intervention.
+The compiler output is a hardware-agnostic Tensor-Graph IR. The microsubstrate (JARVIS-K) autonomously schedules nodes of this graph to the most efficient available hardware (SIMD, NPU, or GPU) without developer intervention.
 
 ## Consequences
 - Human readability is sacrificed for **Token Efficiency** and **Semantic Precision**.

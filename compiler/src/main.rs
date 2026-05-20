@@ -16,7 +16,7 @@ fn main() {
     if args.contains(&"--mcp".to_string()) {
         println!("JARVIS Neuro-Compiler Interface (NCI) Active.");
         println!("MCP Server listening for autonomous repair loops...");
-        let _server = McpServer::new();
+        let _server = McpServer::new(jarvis_compiler::nci::AiProvider::Gemini);
         // Mock server loop
         return;
     }
