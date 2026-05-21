@@ -35,20 +35,21 @@ impl<'a> Parser<'a> {
             return Err("Expected module name".to_string());
         };
 
+        self.expect(Token::OpenBrace)?;
         let mut body = Vec::new();
 
-        while self.current_token != Token::Verify && self.current_token != Token::Eof {
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
             match self.current_token {
                 Token::Complexity => {
                     body.push(self.parse_complexity_block()?);
                 }
-                _ => break,
+                Token::Verify => {
+                    body.push(self.parse_verify_block()?);
+                }
+                _ => self.advance(),
             }
         }
-
-        if self.current_token == Token::Verify {
-            body.push(self.parse_verify_block()?);
-        }
+        self.expect(Token::CloseBrace)?;
 
         Ok(Node::Module { name, body })
     }
@@ -169,9 +170,18 @@ impl<'a> Parser<'a> {
             Token::Sync => self.parse_sync_block(),
             Token::Gossip => self.parse_gossip_statement(),
             Token::Contract => self.parse_contract_block(),
-            Token::Knowledge => self.parse_knowledge_statement(),
+            Token::Gossip => self.parse_gossip_statement(),
             Token::Publish => self.parse_publish_statement(),
+            Token::Window => self.parse_window_statement(),
+            Token::Event => self.parse_event_block(),
             Token::Assert => self.parse_assert_statement(),
+            Token::Layout => self.parse_layout_statement(),
+            Token::Component => self.parse_component_statement_as_stmt(),
+            Token::Poll => self.parse_poll_statement(),
+            Token::Print => self.parse_print_statement(),
+            Token::CaptureFrame => self.parse_capture_frame_statement(),
+            Token::CaptureStream => self.parse_capture_stream_statement(),
+
             _ => {
                 let expr = self.parse_expression()?;
                 if self.current_token == Token::Semicolon {
@@ -180,6 +190,85 @@ impl<'a> Parser<'a> {
                 Ok(Stmt::Expression { expr })
             }
         }
+    }
+
+    fn parse_layout_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::Layout)?;
+        let kind = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "box" };
+
+        self.expect(Token::OpenBrace)?;
+        let mut content = Vec::new();
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            content.push(self.parse_statement()?);
+        }
+        self.expect(Token::CloseBrace)?;
+        Ok(Stmt::Layout { kind, content })
+    }
+
+    fn parse_component_statement_as_stmt(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::Component)?;
+        let kind = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "Unknown" };
+
+        self.expect(Token::OpenParen)?;
+        let mut args = Vec::new();
+        while self.current_token != Token::CloseParen && self.current_token != Token::Eof {
+            args.push(self.parse_expression()?);
+            if self.current_token == Token::Comma {
+                self.advance();
+            }
+        }
+        self.expect(Token::CloseParen)?;
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Stmt::Component { kind, args })
+    }
+
+    fn parse_poll_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // poll
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Stmt::Poll)
+    }
+
+    fn parse_print_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // print
+        self.expect(Token::OpenParen)?;
+        let value = self.parse_expression()?;
+        self.expect(Token::Comma)?;
+        let x = self.parse_expression()?;
+        self.expect(Token::Comma)?;
+        let y = self.parse_expression()?;
+        self.expect(Token::Comma)?;
+        let color = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Stmt::Print { value, x, y, color })
+    }
+
+    fn parse_capture_frame_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // capture_frame
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Stmt::CaptureFrame)
+    }
+
+    fn parse_capture_stream_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // capture_stream
+        if self.current_token == Token::Semicolon {
+            self.advance();
+        }
+        Ok(Stmt::CaptureStream)
     }
 
     fn parse_contract_block(&mut self) -> Result<Stmt<'a>, String> {
@@ -224,6 +313,42 @@ impl<'a> Parser<'a> {
             self.advance();
         }
         Ok(Stmt::Publish { target })
+    }
+
+    fn parse_window_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // window
+        let title = if let Token::StringLiteral(s) = self.current_token {
+            self.advance();
+            s
+        } else { "JARVIS Surface" };
+        
+        self.expect(Token::OpenBracket)?;
+        let mut width = 1920;
+        let mut height = 1080;
+        if let Token::NumberLiteral(w) = self.current_token {
+            width = w.parse().unwrap_or(1920);
+            self.advance();
+            self.expect(Token::Comma)?;
+            if let Token::NumberLiteral(h) = self.current_token {
+                height = h.parse().unwrap_or(1080);
+                self.advance();
+            }
+        }
+        self.expect(Token::CloseBracket)?;
+        if self.current_token == Token::Semicolon { self.advance(); }
+        Ok(Stmt::Window { title, width, height })
+    }
+
+    fn parse_event_block(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // event
+        let kind = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "any" };
+        
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::Event { kind, body })
     }
 
     fn parse_budget_statement(&mut self) -> Result<Stmt<'a>, String> {
@@ -446,6 +571,14 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(Expr::StringLiteral(s))
             }
+            Token::Input => {
+                self.advance();
+                if self.current_token == Token::OpenParen {
+                    self.advance();
+                    self.expect(Token::CloseParen)?;
+                }
+                Ok(Expr::Input)
+            }
             Token::Identifier(id) => {
                 self.advance();
                 if self.current_token == Token::OpenParen {
@@ -513,6 +646,10 @@ impl<'a> Parser<'a> {
         while self.current_token != Token::CloseParen && self.current_token != Token::Eof {
             if let Token::Identifier(pname) = self.current_token {
                 self.advance();
+                if self.current_token == Token::Colon {
+                    self.advance();
+                    self.parse_type()?;
+                }
                 params.push(pname);
                 if self.current_token == Token::Comma {
                     self.advance();

@@ -1,0 +1,8 @@
+[package]
+name = "jarvis-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+minifb = "0.24"
+# Using minifb for the Universal Display Substrate (UDS)

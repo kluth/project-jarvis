@@ -9,6 +9,13 @@ pub enum Instruction {
     Halt,
     // Stream ops
     StreamMap,
+    // GUI Ops (UDS)
+    WinCreate,
+    WinUpdate,
+    DrawRect,
+    // Comm Ops
+    CommSync,
+    CommGossip,
 }
 
 pub struct Bytecode {

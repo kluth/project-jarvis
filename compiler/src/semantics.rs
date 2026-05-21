@@ -154,6 +154,18 @@ impl OmegaVerifier {
                 // EFDD requires bounded loops for proof
                 body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() * 100.0 // Proof bound: 100 iterations
             }
+            Stmt::Layout { content, .. } => {
+                content.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 500.0
+            }
+            Stmt::Component { args, .. } => {
+                args.iter().map(|a| self.estimate_expr_cost(a)).sum::<f32>() + 150.0
+            }
+            Stmt::Poll => 100.0,
+            Stmt::Print { value, x, y, color } => {
+                self.estimate_expr_cost(value) + self.estimate_expr_cost(x) + self.estimate_expr_cost(y) + self.estimate_expr_cost(color) + 250.0
+            }
+            Stmt::CaptureFrame => 5000.0,
+            Stmt::CaptureStream => 1000.0,
             _ => 0.05,
         }
     }
@@ -166,6 +178,7 @@ impl OmegaVerifier {
             Expr::Call { args, .. } => {
                 0.5 + args.iter().map(|a| self.estimate_expr_cost(a)).sum::<f32>()
             }
+            Expr::Input => 0.1,
             _ => 0.01,
         }
     }

@@ -1,0 +1,8 @@
+
+--- MCP SESSION START ---
+IN: {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"analyze_screenshot","arguments":{"url":"https://lh3.googleusercontent.com/aida/ADBb0ugHDU9t7SmPFCHbXcqXxtlxkqWJNp1QuIN4N0S6sXAO8XTMUUb-CVlXSKWsFq05whxYNUdOzqjSl0BbjFf08Z4XR5NsdmJc1NDFcrsTX4uuSANZ1XkAgBJTDoW_EZI8KtiBxLtLYZGRVUM5CDs3rGm93-bae72kWG66US1ez-7L8LV4TJvuB_STQAs6kaLhTx8eDjzB4jQcgod7PdSzqKCFuLoGCScmDF1X9XhIUyTbmoUqq4FB0HxyH-o"}}}
+OUT: {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"Gemini-1.5 response for: Analyze screenshot from: https://lh3.googleusercontent.com/aida/ADBb0ugHDU9t7SmPFCHbXcqXxtlxkqWJNp1QuIN4N0S6sXAO8XTMUUb-CVlXSKWsFq05whxYNUdOzqjSl0BbjFf08Z4XR5NsdmJc1NDFcrsTX4uuSANZ1XkAgBJTDoW_EZI8KtiBxLtLYZGRVUM5CDs3rGm93-bae72kWG66US1ez-7L8LV4TJvuB_STQAs6kaLhTx8eDjzB4jQcgod7PdSzqKCFuLoGCScmDF1X9XhIUyTbmoUqq4FB0HxyH-o (Size: 89720 bytes)"}]}}
+
+--- MCP SESSION START ---
+IN: {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"compare_design","arguments":{"screen_id":"4bae2b57322147388c2dbaa727766062","executable":"../../jarvis-messenger/test-gui.sh"}}}
+OUT: {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"Gemini-1.5 response for: Compare local 'jarvis_screenshot.bmp' against Stitch Design ID: 4bae2b57322147388c2dbaa727766062"}]}}

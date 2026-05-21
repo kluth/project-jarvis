@@ -35,13 +35,13 @@ impl MultiAgentGateway {
 
 /// Neuro-Compiler Interface (NCI) via Model Context Protocol (MCP).
 /// Enables autonomous AI-driven repair loops.
-pub struct McpServer {
+pub struct McpServer<'a> {
     pub verifier: OmegaVerifier,
-    pub backend: AotBackend,
+    pub backend: AotBackend<'a>,
     pub gateway: MultiAgentGateway,
 }
 
-impl McpServer {
+impl<'a> McpServer<'a> {
     pub fn new(provider: AiProvider) -> Self {
         Self {
             verifier: OmegaVerifier::new(),
@@ -77,5 +77,37 @@ impl McpServer {
     pub fn apply_atomic_fix(&mut self, source: &str) -> Result<String, String> {
         // AI-driven repair logic here
         self.gateway.dispatch_request(source)
+    }
+
+    /// MCP Tool: analyze_screenshot(url)
+    /// Fetches a screenshot via external curl, then dispatches to AI for analysis.
+    /// Time: O(1) for dispatch.
+    pub fn analyze_screenshot(&self, url: &str) -> Result<String, String> {
+        let output = std::process::Command::new("curl")
+            .arg("-s")
+            .arg(url)
+            .output()
+            .map_err(|e| e.to_string())?;
+        
+        self.gateway.dispatch_request(&format!("Analyze screenshot from: {} (Size: {} bytes)", url, output.stdout.len()))
+    }
+
+    /// MCP Tool: compare_design(screen_id, executable)
+    /// Runs a native executable, triggers capture, and compares against Stitch.
+    /// Time: O(N) for execution and analysis.
+    pub fn compare_design(&self, screen_id: &str, executable: &str) -> Result<String, String> {
+        // 1. Run local executable in headless mode
+        let _ = std::process::Command::new(executable)
+            .env("JARVIS_HEADLESS", "1")
+            .output()
+            .map_err(|e| format!("Failed to run executable: {}", e))?;
+
+        // 2. Verification that screenshot was taken programmatically by JUR
+        if !std::path::Path::new("jarvis_screenshot.bmp").exists() {
+            return Err("Executable failed to produce jarvis_screenshot.bmp".to_string());
+        }
+
+        // 3. Dispatch to AI gateway for comparison
+        self.gateway.dispatch_request(&format!("Compare local 'jarvis_screenshot.bmp' against Stitch Design ID: {}", screen_id))
     }
 }

@@ -27,6 +27,7 @@ pub enum Expr<'a> {
         op: &'a str,
         right: Box<Expr<'a>>,
     },
+    Input,
 }
 
 #[derive(Debug, PartialEq)]
@@ -83,8 +84,34 @@ pub enum Stmt<'a> {
     Publish {
         target: &'a str,
     },
+    Window {
+        title: &'a str,
+        width: usize,
+        height: usize,
+    },
+    Event {
+        kind: &'a str,
+        body: Vec<Stmt<'a>>,
+    },
     Assert {
         condition: Expr<'a>,
+    },
+    Layout {
+        kind: &'a str,
+        content: Vec<Stmt<'a>>,
+    },
+    Component {
+        kind: &'a str,
+        args: Vec<Expr<'a>>,
+    },
+    Poll,
+    CaptureFrame,
+    CaptureStream,
+    Print {
+        value: Expr<'a>,
+        x: Expr<'a>,
+        y: Expr<'a>,
+        color: Expr<'a>,
     },
 }
 
@@ -126,4 +153,5 @@ pub enum Node<'a> {
         kind: &'a str,
         args: Vec<Expr<'a>>,
     },
+    Poll,
 }

@@ -34,7 +34,8 @@ fn main() {
                     let mut backend = AotBackend::new();
                     match backend.lower_to_elf(&ast) {
                         Ok(elf) => {
-                            println!("AOT Production ELF Generated ({} bytes).", elf.code_section.len());
+                            fs::write("output.elf", &elf.code_section).expect("Failed to write ELF");
+                            println!("AOT Production ELF Generated ({} bytes) -> output.elf", elf.code_section.len());
                         }
                         Err(e) => println!("Backend Error: {}", e),
                     }
@@ -52,7 +53,7 @@ use std::fs::OpenOptions;
 /// Refactored for absolute protocol compliance and robust parsing.
 /// Time Complexity: O(N) per request.
 fn run_mcp_server() {
-    let _server = McpServer::new(AiProvider::Gemini);
+    let mut server = McpServer::new(AiProvider::Gemini);
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
@@ -72,7 +73,7 @@ fn run_mcp_server() {
         if req.trim().is_empty() { continue; }
         if let Some(ref mut f) = log_file { let _ = writeln!(f, "IN: {}", req); }
 
-        // 1. Precise Field Extraction (Preserves quotes for strings)
+        // 1. Precise Field Extraction
         let get_raw_val = |target: &str| {
             let key = format!("\"{}\"", target);
             req.find(&key).and_then(|pos| {
@@ -101,19 +102,36 @@ fn run_mcp_server() {
                     id
                 ))
             }
-            Some("notifications/initialized") | Some("initialized") => {
-                None 
-            }
             Some("tools/list") => {
                 Some(format!(
-                    r#"{{"jsonrpc":"2.0","id":{},"result":{{"tools":[{{"name":"query_ast","description":"Inspect AST","inputSchema":{{"type":"object","properties":{{"source":{{"type":"string"}}}}}}}},{{"name":"analyze_energy","description":"Energy breakdown","inputSchema":{{"type":"object","properties":{{"fn_name":{{"type":"string"}}}}}}}},{{"name":"run_mutants","description":"Mutation testing","inputSchema":{{"type":"object","properties":{{"source":{{"type":"string"}}}}}}}},{{"name":"apply_atomic_fix","description":"Repair module","inputSchema":{{"type":"object","properties":{{"patch":{{"type":"string"}}}}}}}}]}}}}"#,
+                    r#"{{"jsonrpc":"2.0","id":{},"result":{{"tools":[{{"name":"query_ast","description":"Inspect AST","inputSchema":{{"type":"object","properties":{{"source":{{"type":"string"}}}}}}}},{{"name":"analyze_energy","description":"Energy breakdown","inputSchema":{{"type":"object","properties":{{"fn_name":{{"type":"string"}}}}}}}},{{"name":"run_mutants","description":"Mutation testing","inputSchema":{{"type":"object","properties":{{"source":{{"type":"string"}}}}}}}},{{"name":"apply_atomic_fix","description":"Repair module","inputSchema":{{"type":"object","properties":{{"patch":{{"type":"string"}}}}}}}},{{"name":"analyze_screenshot","description":"Fetch and analyze screenshot","inputSchema":{{"type":"object","properties":{{"url":{{"type":"string"}}}}}}}},{{"name":"compare_design","description":"Compare native GUI to Stitch design","inputSchema":{{"type":"object","properties":{{"screen_id":{{"type":"string"}},"executable":{{"type":"string"}}}}}}}}]}}}}"#,
                     id
                 ))
             }
             Some("tools/call") | Some("callTool") => {
+                let name_raw = get_raw_val("name");
+                let name = name_raw.as_ref().map(|n| n.trim_matches('"'));
+                
+                let result = match name {
+                    Some("analyze_screenshot") => {
+                        let url = get_raw_val("url").unwrap_or("".to_string()).trim_matches('"').to_string();
+                        server.analyze_screenshot(&url).unwrap_or_else(|e| e)
+                    }
+                    Some("apply_atomic_fix") => {
+                        let patch = get_raw_val("patch").unwrap_or("".to_string()).trim_matches('"').to_string();
+                        server.apply_atomic_fix(&patch).unwrap_or_else(|e| e)
+                    }
+                    Some("compare_design") => {
+                        let screen_id = get_raw_val("screen_id").unwrap_or("".to_string()).trim_matches('"').to_string();
+                        let executable = get_raw_val("executable").unwrap_or("".to_string()).trim_matches('"').to_string();
+                        server.compare_design(&screen_id, &executable).unwrap_or_else(|e| e)
+                    }
+                    _ => "Tool not implemented or unknown.".to_string(),
+                };
+
                 Some(format!(
-                    r#"{{"jsonrpc":"2.0","id":{},"result":{{"content":[{{"type":"text","text":"JARVIS Action Successful."}}]}}}}"#,
-                    id
+                    r#"{{"jsonrpc":"2.0","id":{},"result":{{"content":[{{"type":"text","text":"{}"}}]}}}}"#,
+                    id, result
                 ))
             }
             _ => {

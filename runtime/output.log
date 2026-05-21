@@ -1,0 +1,20 @@
+--- JARVIS UNIVERSAL RUNTIME (JUR) v1.0 ---
+Failed to create server-side surface decoration: Missing
+Execution Complete. Substrate Halted.
+warning: queue 0x55a3779770 destroyed while proxies still attached:
+  wl_buffer#17 still attached
+  wl_shm_pool#16 still attached
+  wl_surface#15 still attached
+  wl_shm_pool#14 still attached
+  xdg_toplevel#13 still attached
+  xdg_surface#12 still attached
+  xdg_wm_base#11 still attached
+  wl_buffer#10 still attached
+  wl_shm_pool#9 still attached
+  wl_surface#8 still attached
+  wl_shm#7 still attached
+  wl_compositor#6 still attached
+  wl_pointer#5 still attached
+  wl_keyboard#4 still attached
+  wl_seat#3 still attached
+  wl_registry#2 still attached

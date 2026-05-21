@@ -1,11 +1,13 @@
 use crate::ast::{Node, Stmt, Expr};
 use crate::aot::{Instruction, Opcode, NativeImage};
+use std::collections::HashMap;
 
 /// The JARVIS Production AOT Backend.
 /// Transforms verified AST into machine-native ELF images.
 /// Time: O(N) where N is number of nodes.
-pub struct AotBackend {
+pub struct AotBackend<'a> {
     instructions: Vec<Instruction>,
+    renders: HashMap<&'a str, &'a Node<'a>>,
 }
 
 pub struct ElfBinary {
@@ -14,15 +16,16 @@ pub struct ElfBinary {
     pub metadata_section: Vec<u8>,
 }
 
-impl AotBackend {
+impl<'a> AotBackend<'a> {
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
+            renders: HashMap::new(),
         }
     }
 
     /// Lowering Pipeline: Verified AST -> Production ELF.
-    pub fn lower_to_elf(&mut self, node: &Node) -> Result<ElfBinary, String> {
+    pub fn lower_to_elf(&mut self, node: &'a Node<'a>) -> Result<ElfBinary, String> {
         let _image = self.lower(node)?;
         
         // 1. Encode machine code from instructions
@@ -42,7 +45,10 @@ impl AotBackend {
         })
     }
 
-    fn lower(&mut self, node: &Node) -> Result<NativeImage, String> {
+    fn lower(&mut self, node: &'a Node<'a>) -> Result<NativeImage, String> {
+        // First Pass: Collect Renders
+        self.collect_renders(node);
+
         match node {
             Node::Module { body, .. } => {
                 for child in body {
@@ -63,7 +69,26 @@ impl AotBackend {
         })
     }
 
-    fn lower_node(&mut self, node: &Node) -> Result<(), String> {
+    fn collect_renders(&mut self, node: &'a Node<'a>) {
+        match node {
+            Node::Module { body, .. } => {
+                for child in body {
+                    self.collect_renders(child);
+                }
+            }
+            Node::ComplexityBlock { content, .. } => {
+                for child in content {
+                    self.collect_renders(child);
+                }
+            }
+            Node::Render { name, .. } => {
+                self.renders.insert(name, node);
+            }
+            _ => {}
+        }
+    }
+
+    fn lower_node(&mut self, node: &'a Node<'a>) -> Result<(), String> {
         match node {
             Node::Function { body, .. } => {
                 for stmt in body {
@@ -99,7 +124,7 @@ impl AotBackend {
         Ok(())
     }
 
-    fn lower_stmt(&mut self, stmt: &Stmt) -> Result<(), String> {
+    fn lower_stmt(&mut self, stmt: &'a Stmt<'a>) -> Result<(), String> {
         match stmt {
             Stmt::Let { value, .. } => {
                 self.lower_expr(value)?;
@@ -140,22 +165,75 @@ impl AotBackend {
             Stmt::Publish { .. } => {
                 self.emit(Opcode::CommPublish, 150.0);
             }
+            Stmt::Window { width, height, .. } => {
+                self.emit(Opcode::LoadImm(*width as f32), 0.02);
+                self.emit(Opcode::LoadImm(*height as f32), 0.02);
+                self.emit(Opcode::WinCreate, 50000.0);
+            }
+            Stmt::Event { body, .. } => {
+                self.emit(Opcode::WinPoll, 100.0);
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
+            }
+            Stmt::Layout { content, .. } => {
+                for s in content {
+                    self.lower_stmt(s)?;
+                }
+                self.emit(Opcode::UILayout, 500.0);
+                self.emit(Opcode::UIRender, 12000.0);
+            }
+            Stmt::Component { kind, args } => {
+                for arg in args {
+                    self.lower_expr(arg)?;
+                }
+                // Compute hash for component kind and push as LoadImm
+                let kind_hash = kind.chars().fold(0u32, |acc, c| acc.wrapping_add(c as u32));
+                self.emit(Opcode::LoadImm(kind_hash as f32), 0.02);
+                self.emit(Opcode::UIComponent, 150.0);
+            }
+            Stmt::Poll => {
+                self.emit(Opcode::WinUpdate, 100.0);
+            }
+            Stmt::Print { value, x, y, color } => {
+                self.lower_expr(value)?;
+                self.lower_expr(x)?;
+                self.lower_expr(y)?;
+                self.lower_expr(color)?;
+                self.emit(Opcode::DrawText, 250.0);
+            }
+            Stmt::CaptureFrame => {
+                self.emit(Opcode::ScreenCap, 5000.0);
+            }
+            Stmt::CaptureStream => {
+                self.emit(Opcode::StreamCap, 1000.0);
+            }
             _ => {}
         }
         Ok(())
     }
 
-    fn lower_expr(&mut self, expr: &Expr) -> Result<(), String> {
+    fn lower_expr(&mut self, expr: &'a Expr<'a>) -> Result<(), String> {
         match expr {
             Expr::NumberLiteral(n) => {
                 let val = n.parse::<f32>().unwrap_or(0.0);
                 self.emit(Opcode::LoadImm(val), 0.02);
             }
-            Expr::Call { args, .. } => {
-                for arg in args {
-                    self.lower_expr(arg)?;
+            Expr::StringLiteral(s) => {
+                // Stack is f32-only. Push a pseudo-pointer or hash for the string.
+                let hash = s.chars().fold(0u32, |acc, c| acc.wrapping_add(c as u32));
+                self.emit(Opcode::LoadImm(hash as f32), 0.02);
+            }
+            Expr::Call { name, args } => {
+                if let Some(&render_node) = self.renders.get(name) {
+                    // Inline Render
+                    self.lower_node(render_node)?;
+                } else {
+                    for arg in args {
+                        self.lower_expr(arg)?;
+                    }
+                    self.emit(Opcode::Broadcast, 0.1);
                 }
-                self.emit(Opcode::Broadcast, 0.1);
             }
             Expr::Assignment { value, .. } => {
                 self.lower_expr(value)?;
@@ -173,6 +251,9 @@ impl AotBackend {
             }
             Expr::Identifier(_) => {
                 self.emit(Opcode::Broadcast, 0.02);
+            }
+            Expr::Input => {
+                self.emit(Opcode::InputGet, 0.05);
             }
             _ => {}
         }
@@ -196,6 +277,15 @@ impl AotBackend {
                 Opcode::UIRender => bytes.push(0x08),
                 Opcode::UILayout => bytes.push(0x09),
                 Opcode::UIComponent => bytes.push(0x0A),
+                Opcode::DrawRect => bytes.push(0x11),
+                Opcode::WinCreate => bytes.push(0x0E),
+                Opcode::WinUpdate => bytes.push(0x0F),
+                Opcode::WinPoll => bytes.push(0x12), // Shifted to avoid collision
+                Opcode::DrawText => bytes.push(0x13),
+                Opcode::InputGet => bytes.push(0x14),
+                Opcode::ScreenCap => bytes.push(0x15),
+                Opcode::StreamCap => bytes.push(0x16),
+                Opcode::EventGet => bytes.push(0x10),
                 Opcode::CommSync => bytes.push(0x0B),
                 Opcode::CommGossip => bytes.push(0x0C),
                 Opcode::CommPublish => bytes.push(0x0D),
