@@ -135,6 +135,20 @@ pub enum Stmt<'a> {
         op: &'a str,
         args: Vec<Expr<'a>>,
     },
+    Hologram {
+        kind: &'a str,
+        depth: Expr<'a>,
+        body: Vec<Stmt<'a>>,
+    },
+    PostProcess {
+        effect: &'a str,
+        intensity: Expr<'a>,
+        body: Vec<Stmt<'a>>,
+    },
+    NeuroAdapt {
+        load: Expr<'a>,
+        body: Vec<Stmt<'a>>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -180,5 +194,19 @@ pub enum Node<'a> {
     Allocator {
         name: &'a str,
         body: Vec<Stmt<'a>>,
+    },
+    Hologram {
+        kind: &'a str,
+        depth: Expr<'a>,
+        content: Vec<Node<'a>>,
+    },
+    PostProcess {
+        effect: &'a str,
+        intensity: Expr<'a>,
+        content: Vec<Node<'a>>,
+    },
+    NeuroAdapt {
+        load: Expr<'a>,
+        content: Vec<Node<'a>>,
     },
 }

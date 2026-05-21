@@ -123,6 +123,15 @@ impl<'a> Parser<'a> {
                 Token::Allocator => {
                     content.push(self.parse_allocator_block()?);
                 }
+                Token::Hologram => {
+                    content.push(self.parse_hologram_block()?);
+                }
+                Token::PostProcess => {
+                    content.push(self.parse_post_process_block()?);
+                }
+                Token::NeuroAdapt => {
+                    content.push(self.parse_neuro_adapt_block()?);
+                }
                 _ => self.advance(),
             }
         }
@@ -219,6 +228,9 @@ impl<'a> Parser<'a> {
             Token::Asm => self.parse_asm_block(),
             Token::Volatile => self.parse_volatile_op(),
             Token::Atomic => self.parse_atomic_op(),
+            Token::Hologram => self.parse_hologram_statement(),
+            Token::PostProcess => self.parse_post_process_statement(),
+            Token::NeuroAdapt => self.parse_neuro_adapt_statement(),
 
             _ => {
                 let expr = self.parse_expression()?;
@@ -857,5 +869,99 @@ impl<'a> Parser<'a> {
         self.expect(Token::OpenBrace)?;
         let body = self.parse_block()?;
         Ok(Node::Allocator { name, body })
+    }
+
+    fn parse_hologram_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::Hologram)?;
+        let kind = match self.current_token {
+            Token::StringLiteral(s) | Token::Identifier(s) => { self.advance(); s }
+            _ => "parallax"
+        };
+        self.expect(Token::OpenParen)?;
+        let depth = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::Hologram { kind, depth, body })
+    }
+
+    fn parse_hologram_block(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::Hologram)?;
+        let kind = match self.current_token {
+            Token::StringLiteral(s) | Token::Identifier(s) => { self.advance(); s }
+            _ => "parallax"
+        };
+        self.expect(Token::OpenParen)?;
+        let depth = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        let content = self.parse_nodes()?;
+        self.expect(Token::CloseBrace)?;
+        Ok(Node::Hologram { kind, depth, content })
+    }
+
+    fn parse_post_process_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::PostProcess)?;
+        let effect = match self.current_token {
+            Token::StringLiteral(s) | Token::Identifier(s) => { self.advance(); s }
+            _ => "glitch"
+        };
+        self.expect(Token::OpenParen)?;
+        let intensity = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::PostProcess { effect, intensity, body })
+    }
+
+    fn parse_post_process_block(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::PostProcess)?;
+        let effect = match self.current_token {
+            Token::StringLiteral(s) | Token::Identifier(s) => { self.advance(); s }
+            _ => "glitch"
+        };
+        self.expect(Token::OpenParen)?;
+        let intensity = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        let content = self.parse_nodes()?;
+        self.expect(Token::CloseBrace)?;
+        Ok(Node::PostProcess { effect, intensity, content })
+    }
+
+    fn parse_neuro_adapt_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::NeuroAdapt)?;
+        self.expect(Token::OpenParen)?;
+        let load = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::NeuroAdapt { load, body })
+    }
+
+    fn parse_neuro_adapt_block(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::NeuroAdapt)?;
+        self.expect(Token::OpenParen)?;
+        let load = self.parse_expression()?;
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        let content = self.parse_nodes()?;
+        self.expect(Token::CloseBrace)?;
+        Ok(Node::NeuroAdapt { load, content })
+    }
+
+    fn parse_nodes(&mut self) -> Result<Vec<Node<'a>>, String> {
+        let mut nodes = Vec::new();
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            match self.current_token {
+                Token::Hologram => nodes.push(self.parse_hologram_block()?),
+                Token::PostProcess => nodes.push(self.parse_post_process_block()?),
+                Token::NeuroAdapt => nodes.push(self.parse_neuro_adapt_block()?),
+                Token::Component => nodes.push(self.parse_component_statement()?),
+                Token::Layout => nodes.push(self.parse_layout_block()?),
+                _ => self.advance(),
+            }
+        }
+        Ok(nodes)
     }
 }

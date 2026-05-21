@@ -55,6 +55,14 @@ pub enum Opcode {
     VolatileRead,
     /// O(1) Generic Atomic Operation.
     AtomicGeneric,
+    /// O(Pixels) Start Holographic Rendering.
+    UIHologramStart,
+    /// Stop Holographic Rendering.
+    UIHologramEnd,
+    /// O(Pixels) Apply UI Post-Processing.
+    UIPostProcess,
+    /// O(1) Conditional Neuro-Adaptive Branch.
+    UINeuroAdapt,
     /// Halt execution.
     Halt,
 }

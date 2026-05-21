@@ -134,6 +134,28 @@ impl<'a> AotBackend<'a> {
                     self.lower_stmt(s)?;
                 }
             }
+            Node::Hologram { depth, content, .. } => {
+                self.lower_expr(depth)?;
+                self.emit(Opcode::UIHologramStart, 1000.0);
+                for child in content {
+                    self.lower_node(child)?;
+                }
+                self.emit(Opcode::UIHologramEnd, 10.0);
+            }
+            Node::PostProcess { intensity, content, .. } => {
+                self.lower_expr(intensity)?;
+                for child in content {
+                    self.lower_node(child)?;
+                }
+                self.emit(Opcode::UIPostProcess, 8000.0);
+            }
+            Node::NeuroAdapt { load, content, .. } => {
+                self.lower_expr(load)?;
+                self.emit(Opcode::UINeuroAdapt, 50.0);
+                for child in content {
+                    self.lower_node(child)?;
+                }
+            }
             _ => {}
         }
         Ok(())
@@ -222,6 +244,28 @@ impl<'a> AotBackend<'a> {
             }
             Stmt::CaptureStream => {
                 self.emit(Opcode::StreamCap, 1000.0);
+            }
+            Stmt::Hologram { depth, body, .. } => {
+                self.lower_expr(depth)?;
+                self.emit(Opcode::UIHologramStart, 1000.0);
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
+                self.emit(Opcode::UIHologramEnd, 10.0);
+            }
+            Stmt::PostProcess { intensity, body, .. } => {
+                self.lower_expr(intensity)?;
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
+                self.emit(Opcode::UIPostProcess, 8000.0);
+            }
+            Stmt::NeuroAdapt { load, body, .. } => {
+                self.lower_expr(load)?;
+                self.emit(Opcode::UINeuroAdapt, 50.0);
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
             }
             Stmt::Asm { .. } => {
                 self.emit(Opcode::AsmBlock, 0.05);
@@ -329,6 +373,10 @@ impl<'a> AotBackend<'a> {
                 Opcode::VolatileWrite => bytes.push(0x18),
                 Opcode::VolatileRead => bytes.push(0x19),
                 Opcode::AtomicGeneric => bytes.push(0x1A),
+                Opcode::UIHologramStart => bytes.push(0x1B),
+                Opcode::UIHologramEnd => bytes.push(0x1C),
+                Opcode::UIPostProcess => bytes.push(0x1D),
+                Opcode::UINeuroAdapt => bytes.push(0x1E),
                 Opcode::Halt => bytes.push(0x00),
             }
         }
