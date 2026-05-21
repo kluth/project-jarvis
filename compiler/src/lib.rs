@@ -150,4 +150,41 @@ mod tests {
         assert!(code.contains(&0x08)); // UIRender
         assert!(code.contains(&0x0A)); // UIComponent
     }
+
+    #[test]
+    fn test_scifi_ui_primitives() {
+        let source = r#"
+            module SciFi
+            complexity O(1)
+            {
+                render HUD() {
+                    hologram "parallax" (1.0) {
+                        component "ParticleField"();
+                    }
+                }
+
+                func main() {
+                    post_process "glitch" (0.8) {
+                        HUD();
+                    }
+                    neuro_adapt (0.5) {
+                        poll;
+                    }
+                }
+            }
+        "#;
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse SciFi module");
+
+        use crate::backend::AotBackend;
+        let mut backend = AotBackend::new();
+        let elf = backend.lower_to_elf(&ast).expect("Failed to lower to ELF");
+        
+        let code = &elf.code_section;
+        assert!(code.contains(&0x1B)); // UIHologramStart
+        assert!(code.contains(&0x1C)); // UIHologramEnd
+        assert!(code.contains(&0x1D)); // UIPostProcess
+        assert!(code.contains(&0x1E)); // UINeuroAdapt
+    }
 }

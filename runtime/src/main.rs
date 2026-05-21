@@ -281,8 +281,21 @@ impl JUR {
                             self.draw_char('N', x+60, y+20, 0x000000);
                             self.draw_char('D', x+70, y+20, 0x000000);
                         }
+                        1234 => { // ParticleField
+                            if self.particles.len() < 100 {
+                                self.particles.push(Particle {
+                                    x: (self.width / 2) as f32,
+                                    y: (self.height / 2) as f32,
+                                    vx: (self.particles.len() as f32).sin() * 2.0,
+                                    vy: (self.particles.len() as f32).cos() * 2.0,
+                                    life: 1.0,
+                                });
+                            }
+                        }
                         _ => { x = 10; y = 10; w = 50; h = 50; }
                     }
+
+                    self.update_particles();
 
                     for row in y..(y+h).min(self.height) {
                         for col in x..(x+w).min(self.width) {
@@ -429,10 +442,29 @@ impl JUR {
                 0x1A => { // AtomicOp
                     println!("[JUR] [DEBUG] Atomic Operation Executed");
                 }
-                0x1B => { let d = self.stack.pop().unwrap_or(1.0); self.is_hologram = true; self.parallax_offset = (d * 5.0, d * 2.0); self.alpha_modifier = 0.6; }
-                0x1C => { self.is_hologram = false; self.alpha_modifier = 1.0; }
-                0x1D => { let i = self.stack.pop().unwrap_or(0.0); self.apply_glitch_fx(i); }
-                0x1E => { let l = self.stack.pop().unwrap_or(0.0); if l > 0.8 { println!("[NEURO] Focus Mode."); } }
+                0x1B => {
+                    let d = self.stack.pop().unwrap_or(1.0);
+                    self.is_hologram = true;
+                    self.parallax_offset = (d * 5.0, d * 2.0);
+                    self.alpha_modifier = 0.6;
+                    println!("[JUR] [FX] Hologram Phase Shift Enabled (Depth: {})", d);
+                }
+                0x1C => {
+                    self.is_hologram = false;
+                    self.alpha_modifier = 1.0;
+                    println!("[JUR] [FX] Hologram Phase Shift Disabled");
+                }
+                0x1D => {
+                    let i = self.stack.pop().unwrap_or(0.0);
+                    println!("[JUR] [FX] Applying Cyber-Glitch Shader (Intensity: {})", i);
+                    self.apply_glitch_fx(i);
+                }
+                0x1E => {
+                    let l = self.stack.pop().unwrap_or(0.0);
+                    if l > 0.8 {
+                        println!("[JUR] [NEURO] Focus Mode Active (Load: {}).", l);
+                    }
+                }
                 0x00 => { // Halt
                     if self.window.is_none() && !self.buffer.is_empty() {
                         let active_pixels = self.buffer.iter().filter(|&&p| p != 0x050506).count();

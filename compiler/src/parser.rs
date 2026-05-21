@@ -772,14 +772,8 @@ impl<'a> Parser<'a> {
         self.expect(Token::CloseParen)?;
         self.expect(Token::OpenBrace)?;
         
-        let mut body = Vec::new();
-        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
-            match self.current_token {
-                Token::Layout => body.push(self.parse_layout_block()?),
-                Token::Component => body.push(self.parse_component_statement()?),
-                _ => self.advance(),
-            }
-        }
+        let body = self.parse_nodes()?;
+        
         self.expect(Token::CloseBrace)?;
         Ok(Node::Render { name, params, body, verification: None })
     }
