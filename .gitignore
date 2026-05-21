@@ -3,3 +3,6 @@ compiler/target/
 substrate/target/
 **/*.rs.bk
 .DS_Store
+**/target/
+*.elf
+mcp.log
