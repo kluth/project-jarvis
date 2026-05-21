@@ -25,6 +25,13 @@ pub enum Token<'a> {
     Publish,
     Reflect,
     Assert,
+    Asm,
+    Volatile,
+    Atomic,
+    NoMangle,
+    Section,
+    Interrupt,
+    Allocator,
     Render,
     Layout,
     Component,
@@ -57,6 +64,7 @@ pub enum Token<'a> {
     Comma,
     Colon,
     Semicolon,
+    At,
     OpenBrace,
     CloseBrace,
     OpenParen,
@@ -97,6 +105,7 @@ impl<'a> Lexer<'a> {
 
         match c {
             '"' => self.lex_string_literal(),
+            '@' => { self.consume(); Token::At }
             '{' => { self.consume(); Token::OpenBrace }
             '}' => { self.consume(); Token::CloseBrace }
             '(' => { self.consume(); Token::OpenParen }
@@ -138,6 +147,21 @@ impl<'a> Lexer<'a> {
 
     fn lex_number_literal(&mut self) -> Token<'a> {
         let start = self.cursor;
+        
+        // Check for hex notation
+        if self.peek() == Some('0') && self.peek_next() == Some('x') {
+            self.consume(); // '0'
+            self.consume(); // 'x'
+            while let Some(c) = self.peek() {
+                if c.is_ascii_hexdigit() {
+                    self.consume();
+                } else {
+                    break;
+                }
+            }
+            return Token::NumberLiteral(&self.source[start..self.cursor]);
+        }
+
         while let Some(c) = self.peek() {
             if c.is_digit(10) || c == '.' {
                 self.consume();
@@ -217,6 +241,13 @@ impl<'a> Lexer<'a> {
             "knowledge" => Token::Knowledge,
             "publish" => Token::Publish,
             "reflect" => Token::Reflect,
+            "asm" => Token::Asm,
+            "volatile" => Token::Volatile,
+            "atomic" => Token::Atomic,
+            "no_mangle" => Token::NoMangle,
+            "section" => Token::Section,
+            "interrupt" => Token::Interrupt,
+            "allocator" => Token::Allocator,
             "i32" | "I32" => Token::TypeI32,
             "f32" | "F32" => Token::TypeF32,
             "Stream" => Token::TypeStream,

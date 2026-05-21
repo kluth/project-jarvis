@@ -8,6 +8,7 @@ use std::collections::HashMap;
 pub struct AotBackend<'a> {
     instructions: Vec<Instruction>,
     renders: HashMap<&'a str, &'a Node<'a>>,
+    attributes: Vec<String>,
 }
 
 pub struct ElfBinary {
@@ -21,6 +22,7 @@ impl<'a> AotBackend<'a> {
         Self {
             instructions: Vec::new(),
             renders: HashMap::new(),
+            attributes: Vec::new(),
         }
     }
 
@@ -90,7 +92,14 @@ impl<'a> AotBackend<'a> {
 
     fn lower_node(&mut self, node: &'a Node<'a>) -> Result<(), String> {
         match node {
-            Node::Function { body, .. } => {
+            Node::Function { body, attributes, .. } => {
+                for attr in attributes {
+                    match attr {
+                        crate::ast::Attribute::NoMangle => self.attributes.push("NO_MANGLE".to_string()),
+                        crate::ast::Attribute::Interrupt(target) => self.attributes.push(format!("INTERRUPT:{}", target)),
+                        crate::ast::Attribute::Section(name) => self.attributes.push(format!("SECTION:{}", name)),
+                    }
+                }
                 for stmt in body {
                     self.lower_stmt(stmt)?;
                 }
@@ -117,6 +126,12 @@ impl<'a> AotBackend<'a> {
             Node::ComplexityBlock { content, .. } => {
                 for child in content {
                     self.lower_node(child)?;
+                }
+            }
+            Node::Allocator { body, .. } => {
+                self.attributes.push("GLOBAL_ALLOCATOR".to_string());
+                for s in body {
+                    self.lower_stmt(s)?;
                 }
             }
             _ => {}
@@ -208,6 +223,24 @@ impl<'a> AotBackend<'a> {
             Stmt::CaptureStream => {
                 self.emit(Opcode::StreamCap, 1000.0);
             }
+            Stmt::Asm { .. } => {
+                self.emit(Opcode::AsmBlock, 0.05);
+            }
+            Stmt::VolatileWrite { address, value } => {
+                self.lower_expr(address)?;
+                self.lower_expr(value)?;
+                self.emit(Opcode::VolatileWrite, 0.1);
+            }
+            Stmt::VolatileRead { address, .. } => {
+                self.lower_expr(address)?;
+                self.emit(Opcode::VolatileRead, 0.1);
+            }
+            Stmt::AtomicOp { args, .. } => {
+                for arg in args {
+                    self.lower_expr(arg)?;
+                }
+                self.emit(Opcode::AtomicGeneric, 0.2);
+            }
             _ => {}
         }
         Ok(())
@@ -216,7 +249,11 @@ impl<'a> AotBackend<'a> {
     fn lower_expr(&mut self, expr: &'a Expr<'a>) -> Result<(), String> {
         match expr {
             Expr::NumberLiteral(n) => {
-                let val = n.parse::<f32>().unwrap_or(0.0);
+                let val = if n.starts_with("0x") {
+                    u32::from_str_radix(&n[2..], 16).map(|v| v as f32).unwrap_or(0.0)
+                } else {
+                    n.parse::<f32>().unwrap_or(0.0)
+                };
                 self.emit(Opcode::LoadImm(val), 0.02);
             }
             Expr::StringLiteral(s) => {
@@ -255,7 +292,6 @@ impl<'a> AotBackend<'a> {
             Expr::Input => {
                 self.emit(Opcode::InputGet, 0.05);
             }
-            _ => {}
         }
         Ok(())
     }
@@ -289,6 +325,10 @@ impl<'a> AotBackend<'a> {
                 Opcode::CommSync => bytes.push(0x0B),
                 Opcode::CommGossip => bytes.push(0x0C),
                 Opcode::CommPublish => bytes.push(0x0D),
+                Opcode::AsmBlock => bytes.push(0x17),
+                Opcode::VolatileWrite => bytes.push(0x18),
+                Opcode::VolatileRead => bytes.push(0x19),
+                Opcode::AtomicGeneric => bytes.push(0x1A),
                 Opcode::Halt => bytes.push(0x00),
             }
         }
@@ -297,7 +337,9 @@ impl<'a> AotBackend<'a> {
 
     fn generate_metadata(&self) -> Vec<u8> {
         let mut meta = Vec::new();
-        meta.extend_from_slice(b"PDD:O(N);EFDD:5000nj");
+        let attr_str = self.attributes.join(";");
+        let base_meta = format!("PDD:O(N);EFDD:5000nj;ATTR:[{}]", attr_str);
+        meta.extend_from_slice(base_meta.as_bytes());
         meta
     }
 

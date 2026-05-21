@@ -55,7 +55,6 @@ use std::fs::OpenOptions;
 fn run_mcp_server() {
     let mut server = McpServer::new(AiProvider::Gemini);
     let stdin = io::stdin();
-    let mut stdout = io::stdout();
 
     let mut log_file = OpenOptions::new()
         .create(true).append(true).open("mcp.log").ok();

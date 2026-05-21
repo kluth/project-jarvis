@@ -68,4 +68,86 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("PDD VIOLATION"));
     }
+
+    #[test]
+    fn test_system_programming_features() {
+        let source = r#"
+            module OS
+            complexity O(1)
+            {
+                @no_mangle
+                @section(".boot")
+                func _start() {
+                    asm { "cli; hlt" }
+                }
+
+                func main() {
+                    volatile write(0x1000, 42);
+                    volatile read(0x1000) -> x;
+                    atomic store(x, 100);
+                }
+
+                allocator Heap {
+                    let pool = 0;
+                }
+            }
+        "#;
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse OS module");
+
+        use crate::backend::AotBackend;
+        let mut backend = AotBackend::new();
+        let elf = backend.lower_to_elf(&ast).expect("Failed to lower to ELF");
+        
+        let metadata = String::from_utf8_lossy(&elf.metadata_section);
+        assert!(metadata.contains("NO_MANGLE"));
+        assert!(metadata.contains("SECTION:.boot"));
+        assert!(metadata.contains("GLOBAL_ALLOCATOR"));
+        
+        // Verify opcodes in bytecode
+        let code = &elf.code_section;
+        assert!(code.contains(&0x17)); // AsmBlock
+        assert!(code.contains(&0x18)); // VolatileWrite
+        assert!(code.contains(&0x19)); // VolatileRead
+        assert!(code.contains(&0x1A)); // AtomicGeneric
+    }
+
+    #[test]
+    fn test_windowing_and_rendering() {
+        let source = r#"
+            module GUI
+            complexity O(N)
+            {
+                verify { test "render_test" { assert(true); } }
+
+                render Dashboard() {
+                    layout "grid" {
+                        component "Status"();
+                    }
+                }
+
+                func main() {
+                    window "JARVIS" [1920, 1080];
+                    event "click" {
+                        poll;
+                        Dashboard();
+                    }
+                }
+            }
+        "#;
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse GUI module");
+
+        use crate::backend::AotBackend;
+        let mut backend = AotBackend::new();
+        let elf = backend.lower_to_elf(&ast).expect("Failed to lower to ELF");
+        
+        let code = &elf.code_section;
+        assert!(code.contains(&0x0E)); // WinCreate
+        assert!(code.contains(&0x12)); // WinPoll
+        assert!(code.contains(&0x08)); // UIRender
+        assert!(code.contains(&0x0A)); // UIComponent
+    }
 }

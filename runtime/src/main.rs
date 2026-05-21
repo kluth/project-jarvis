@@ -85,8 +85,8 @@ pub struct JUR {
     buffer: Vec<u32>,
     width: usize,
     height: usize,
-    layout_y: usize,
-    layout_x: usize,
+    _layout_y: usize,
+    _layout_x: usize,
     input_buffer: Vec<char>,
     is_recording: bool,
     ffmpeg_child: Option<std::process::Child>,
@@ -100,8 +100,8 @@ impl JUR {
             buffer: Vec::new(),
             width: 0,
             height: 0,
-            layout_y: 0,
-            layout_x: 0,
+            _layout_y: 0,
+            _layout_x: 0,
             input_buffer: Vec::new(),
             is_recording: false,
             ffmpeg_child: None,
@@ -220,9 +220,16 @@ impl JUR {
                 }
                 0x0A => { // UIComponent
                     let kind_hash = self.stack.pop().unwrap_or(0.0) as u32;
-                    let arg = self.stack.pop().unwrap_or(0.0);
+                    let _arg = self.stack.pop().unwrap_or(0.0);
                     
-                    let mut x = 0; let mut y = 0; let mut w = 0; let mut h = 0;
+                    #[allow(unused_assignments)]
+                    let mut x = 0; 
+                    #[allow(unused_assignments)]
+                    let mut y = 0; 
+                    #[allow(unused_assignments)]
+                    let mut w = 0; 
+                    #[allow(unused_assignments)]
+                    let mut h = 0;
                     let mut color = 0x121214; 
                     let mut border_color = 0x00f0ff;
                     let mut draw_notches = true;
@@ -338,7 +345,7 @@ impl JUR {
                     // FFmpeg Piping for Screencast
                     if self.is_recording {
                         if let Some(ref mut child) = self.ffmpeg_child {
-                            if let Some(mut stdin) = child.stdin.as_mut() {
+                            if let Some(stdin) = child.stdin.as_mut() {
                                 use std::io::Write;
                                 let bytes: &[u8] = unsafe {
                                     std::slice::from_raw_parts(
@@ -390,6 +397,33 @@ impl JUR {
                         }
                     }
                 }
+                0x12 => { // WinPoll (Non-blocking)
+                    if let Some(ref mut win) = self.window {
+                        win.update();
+                    }
+                }
+                0x10 => { // EventGet
+                    let last_key = if let Some(ref mut win) = self.window {
+                        win.get_keys().first().cloned()
+                    } else { None };
+                    self.stack.push(last_key.map(|k| k as u32 as f32).unwrap_or(0.0));
+                }
+                0x17 => { // AsmBlock
+                    println!("[JUR] [DEBUG] Entering Native Assembly Block (Simulation Mode)");
+                }
+                0x18 => { // VolatileWrite
+                    let val = self.stack.pop().unwrap_or(0.0);
+                    let addr = self.stack.pop().unwrap_or(0.0);
+                    println!("[JUR] [MMIO] Volatile Write: [0x{:x}] = {}", addr as u32, val);
+                }
+                0x19 => { // VolatileRead
+                    let addr = self.stack.pop().unwrap_or(0.0);
+                    println!("[JUR] [MMIO] Volatile Read: [0x{:x}]", addr as u32);
+                    self.stack.push(42.0); // Simulated hardware response
+                }
+                0x1A => { // AtomicOp
+                    println!("[JUR] [CONCURRENCY] Atomic Operation Executed");
+                }
                 0x00 => { // Halt
                     if self.window.is_none() && !self.buffer.is_empty() {
                         let active_pixels = self.buffer.iter().filter(|&&p| p != 0x050506).count();
@@ -413,7 +447,7 @@ fn main() {
         let bytecode = std::fs::read(&args[1]).expect("Failed to read bytecode file");
         jur.run(&bytecode);
     } else {
-        // Default "Hello GUI" Bytecode
+        // Default "Hello GUI" Bytecode + System Ops Verification
         let bytecode: Vec<u8> = vec![
             0x01, 0x00, 0x00, 0x48, 0x44, // LoadImm 800.0
             0x01, 0x00, 0x00, 0x16, 0x44, // LoadImm 600.0
@@ -424,7 +458,16 @@ fn main() {
             0x01, 0x00, 0x00, 0xC8, 0x42, // LoadImm 100.0 (h)
             0x01, 0x00, 0xf0, 0xff, 0x00, // LoadImm 0x00f0ff (Neon Cyan bit pattern)
             0x11,                         // DrawRect
-            0x0F,                         // WinUpdate
+            
+            // System Ops Verification
+            0x17,                         // AsmBlock
+            0x01, 0x00, 0x00, 0x00, 0x00, // LoadImm 0.0 (addr)
+            0x01, 0x00, 0x00, 0x20, 0x41, // LoadImm 10.0 (val)
+            0x18,                         // VolatileWrite
+            0x01, 0x00, 0x00, 0x80, 0x42, // LoadImm 64.0 (addr)
+            0x19,                         // VolatileRead
+            0x1A,                         // AtomicOp
+            
             0x00,                         // Halt
         ];
         jur.run(&bytecode);

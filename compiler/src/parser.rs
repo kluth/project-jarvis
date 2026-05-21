@@ -35,10 +35,9 @@ impl<'a> Parser<'a> {
             return Err("Expected module name".to_string());
         };
 
-        self.expect(Token::OpenBrace)?;
         let mut body = Vec::new();
 
-        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+        while self.current_token != Token::Eof {
             match self.current_token {
                 Token::Complexity => {
                     body.push(self.parse_complexity_block()?);
@@ -49,9 +48,41 @@ impl<'a> Parser<'a> {
                 _ => self.advance(),
             }
         }
-        self.expect(Token::CloseBrace)?;
 
         Ok(Node::Module { name, body })
+    }
+
+    fn parse_attributes(&mut self) -> Result<Vec<crate::ast::Attribute<'a>>, String> {
+        let mut attrs = Vec::new();
+        while self.current_token == Token::At {
+            self.advance();
+            match self.current_token {
+                Token::Interrupt => {
+                    self.advance();
+                    self.expect(Token::OpenParen)?;
+                    if let Token::Identifier(id) = self.current_token {
+                        attrs.push(crate::ast::Attribute::Interrupt(id));
+                        self.advance();
+                    }
+                    self.expect(Token::CloseParen)?;
+                }
+                Token::NoMangle => {
+                    attrs.push(crate::ast::Attribute::NoMangle);
+                    self.advance();
+                }
+                Token::Section => {
+                    self.advance();
+                    self.expect(Token::OpenParen)?;
+                    if let Token::StringLiteral(s) = self.current_token {
+                        attrs.push(crate::ast::Attribute::Section(s));
+                        self.advance();
+                    }
+                    self.expect(Token::CloseParen)?;
+                }
+                _ => return Err(format!("Unexpected attribute: {:?}", self.current_token)),
+            }
+        }
+        Ok(attrs)
     }
 
     fn parse_complexity_block(&mut self) -> Result<Node<'a>, String> {
@@ -74,8 +105,9 @@ impl<'a> Parser<'a> {
                 Token::Verify => {
                     last_verify = Some(self.parse_verify_block()?);
                 }
-                Token::Func => {
-                    let mut func = self.parse_function()?;
+                Token::At | Token::Func => {
+                    let attrs = self.parse_attributes()?;
+                    let mut func = self.parse_function(attrs)?;
                     if let Node::Function { ref mut verification, .. } = func {
                         *verification = last_verify.take().map(Box::new);
                     }
@@ -88,6 +120,9 @@ impl<'a> Parser<'a> {
                     }
                     content.push(render);
                 }
+                Token::Allocator => {
+                    content.push(self.parse_allocator_block()?);
+                }
                 _ => self.advance(),
             }
         }
@@ -96,7 +131,7 @@ impl<'a> Parser<'a> {
         Ok(Node::ComplexityBlock { complexity, content })
     }
 
-    fn parse_function(&mut self) -> Result<Node<'a>, String> {
+    fn parse_function(&mut self, attributes: Vec<crate::ast::Attribute<'a>>) -> Result<Node<'a>, String> {
         self.expect(Token::Func)?;
         
         let name = if let Token::Identifier(id) = self.current_token {
@@ -132,7 +167,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::OpenBrace)?;
         let body = self.parse_block()?;
         
-        Ok(Node::Function { name, params, return_ty, body, verification: None })
+        Ok(Node::Function { name, params, return_ty, body, verification: None, attributes })
     }
 
     fn parse_type(&mut self) -> Result<Type, String> {
@@ -170,7 +205,7 @@ impl<'a> Parser<'a> {
             Token::Sync => self.parse_sync_block(),
             Token::Gossip => self.parse_gossip_statement(),
             Token::Contract => self.parse_contract_block(),
-            Token::Gossip => self.parse_gossip_statement(),
+            Token::Knowledge => self.parse_knowledge_statement(),
             Token::Publish => self.parse_publish_statement(),
             Token::Window => self.parse_window_statement(),
             Token::Event => self.parse_event_block(),
@@ -181,6 +216,9 @@ impl<'a> Parser<'a> {
             Token::Print => self.parse_print_statement(),
             Token::CaptureFrame => self.parse_capture_frame_statement(),
             Token::CaptureStream => self.parse_capture_stream_statement(),
+            Token::Asm => self.parse_asm_block(),
+            Token::Volatile => self.parse_volatile_op(),
+            Token::Atomic => self.parse_atomic_op(),
 
             _ => {
                 let expr = self.parse_expression()?;
@@ -194,10 +232,11 @@ impl<'a> Parser<'a> {
 
     fn parse_layout_statement(&mut self) -> Result<Stmt<'a>, String> {
         self.expect(Token::Layout)?;
-        let kind = if let Token::Identifier(id) = self.current_token {
-            self.advance();
-            id
-        } else { "box" };
+        let kind = match self.current_token {
+            Token::Identifier(id) => { self.advance(); id }
+            Token::StringLiteral(s) => { self.advance(); s }
+            _ => "box"
+        };
 
         self.expect(Token::OpenBrace)?;
         let mut content = Vec::new();
@@ -210,10 +249,11 @@ impl<'a> Parser<'a> {
 
     fn parse_component_statement_as_stmt(&mut self) -> Result<Stmt<'a>, String> {
         self.expect(Token::Component)?;
-        let kind = if let Token::Identifier(id) = self.current_token {
-            self.advance();
-            id
-        } else { "Unknown" };
+        let kind = match self.current_token {
+            Token::Identifier(id) => { self.advance(); id }
+            Token::StringLiteral(s) => { self.advance(); s }
+            _ => "Unknown"
+        };
 
         self.expect(Token::OpenParen)?;
         let mut args = Vec::new();
@@ -269,6 +309,66 @@ impl<'a> Parser<'a> {
             self.advance();
         }
         Ok(Stmt::CaptureStream)
+    }
+
+    fn parse_asm_block(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::Asm)?;
+        self.expect(Token::OpenBrace)?;
+        let start = self.lexer.cursor;
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            self.advance();
+        }
+        let block = &self.lexer.source[start..self.lexer.cursor];
+        self.expect(Token::CloseBrace)?;
+        Ok(Stmt::Asm { block })
+    }
+
+    fn parse_volatile_op(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::Volatile)?;
+        if let Token::Identifier("write") = self.current_token {
+            self.advance();
+            self.expect(Token::OpenParen)?;
+            let address = self.parse_expression()?;
+            self.expect(Token::Comma)?;
+            let value = self.parse_expression()?;
+            self.expect(Token::CloseParen)?;
+            if self.current_token == Token::Semicolon { self.advance(); }
+            Ok(Stmt::VolatileWrite { address, value })
+        } else if let Token::Identifier("read") = self.current_token {
+            self.advance();
+            self.expect(Token::OpenParen)?;
+            let address = self.parse_expression()?;
+            self.expect(Token::CloseParen)?;
+            self.expect(Token::Arrow)?;
+            let dest = if let Token::Identifier(id) = self.current_token {
+                self.advance();
+                id
+            } else { return Err("Expected destination identifier".to_string()); };
+            if self.current_token == Token::Semicolon { self.advance(); }
+            Ok(Stmt::VolatileRead { address, dest })
+        } else {
+            Err("Expected 'read' or 'write' after volatile".to_string())
+        }
+    }
+
+    fn parse_atomic_op(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::Atomic)?;
+        let op = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { return Err("Expected atomic operation name".to_string()); };
+
+        self.expect(Token::OpenParen)?;
+        let mut args = Vec::new();
+        while self.current_token != Token::CloseParen && self.current_token != Token::Eof {
+            args.push(self.parse_expression()?);
+            if self.current_token == Token::Comma {
+                self.advance();
+            }
+        }
+        self.expect(Token::CloseParen)?;
+        if self.current_token == Token::Semicolon { self.advance(); }
+        Ok(Stmt::AtomicOp { op, args })
     }
 
     fn parse_contract_block(&mut self) -> Result<Stmt<'a>, String> {
@@ -341,10 +441,11 @@ impl<'a> Parser<'a> {
 
     fn parse_event_block(&mut self) -> Result<Stmt<'a>, String> {
         self.advance(); // event
-        let kind = if let Token::Identifier(id) = self.current_token {
-            self.advance();
-            id
-        } else { "any" };
+        let kind = match self.current_token {
+            Token::Identifier(id) => { self.advance(); id }
+            Token::StringLiteral(s) => { self.advance(); s }
+            _ => "any"
+        };
         
         self.expect(Token::OpenBrace)?;
         let body = self.parse_block()?;
@@ -673,10 +774,11 @@ impl<'a> Parser<'a> {
 
     fn parse_layout_block(&mut self) -> Result<Node<'a>, String> {
         self.expect(Token::Layout)?;
-        let kind = if let Token::Identifier(id) = self.current_token {
-            self.advance();
-            id
-        } else { "box" };
+        let kind = match self.current_token {
+            Token::Identifier(id) => { self.advance(); id }
+            Token::StringLiteral(s) => { self.advance(); s }
+            _ => "box"
+        };
 
         self.expect(Token::OpenBrace)?;
         let mut content = Vec::new();
@@ -693,10 +795,11 @@ impl<'a> Parser<'a> {
 
     fn parse_component_statement(&mut self) -> Result<Node<'a>, String> {
         self.expect(Token::Component)?;
-        let kind = if let Token::Identifier(id) = self.current_token {
-            self.advance();
-            id
-        } else { "Unknown" };
+        let kind = match self.current_token {
+            Token::Identifier(id) => { self.advance(); id }
+            Token::StringLiteral(s) => { self.advance(); s }
+            _ => "Unknown"
+        };
 
         self.expect(Token::OpenParen)?;
         let mut args = Vec::new();
@@ -743,5 +846,16 @@ impl<'a> Parser<'a> {
         self.expect(Token::OpenBrace)?;
         let body = self.parse_block()?;
         Ok(Node::Test { name, body })
+    }
+
+    fn parse_allocator_block(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::Allocator)?;
+        let name = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "Global" };
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Node::Allocator { name, body })
     }
 }

@@ -30,6 +30,13 @@ pub enum Expr<'a> {
     Input,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Attribute<'a> {
+    Interrupt(&'a str),
+    NoMangle,
+    Section(&'a str),
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Stmt<'a> {
     Let {
@@ -113,6 +120,21 @@ pub enum Stmt<'a> {
         y: Expr<'a>,
         color: Expr<'a>,
     },
+    Asm {
+        block: &'a str,
+    },
+    VolatileWrite {
+        address: Expr<'a>,
+        value: Expr<'a>,
+    },
+    VolatileRead {
+        address: Expr<'a>,
+        dest: &'a str,
+    },
+    AtomicOp {
+        op: &'a str,
+        args: Vec<Expr<'a>>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -131,6 +153,7 @@ pub enum Node<'a> {
         return_ty: Option<Type>,
         body: Vec<Stmt<'a>>,
         verification: Option<Box<Node<'a>>>,
+        attributes: Vec<Attribute<'a>>,
     },
     VerifyBlock {
         tests: Vec<Node<'a>>,
@@ -154,4 +177,8 @@ pub enum Node<'a> {
         args: Vec<Expr<'a>>,
     },
     Poll,
+    Allocator {
+        name: &'a str,
+        body: Vec<Stmt<'a>>,
+    },
 }

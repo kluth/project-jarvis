@@ -86,7 +86,7 @@ impl OmegaVerifier {
                 // 2. EFDD Proof
                 self.prove_efdd_bounds(body, name)?;
             }
-            Node::Render { body, name, verification, .. } => {
+            Node::Render { name, verification, .. } => {
                 if verification.is_none() {
                     return Err(format!("eTDD VIOLATION in render '{}': Missing verify block.", name));
                 }
@@ -166,6 +166,10 @@ impl OmegaVerifier {
             }
             Stmt::CaptureFrame => 5000.0,
             Stmt::CaptureStream => 1000.0,
+            Stmt::Asm { .. } => 0.05,
+            Stmt::VolatileWrite { .. } => 0.1,
+            Stmt::VolatileRead { .. } => 0.1,
+            Stmt::AtomicOp { .. } => 0.2,
             _ => 0.05,
         }
     }

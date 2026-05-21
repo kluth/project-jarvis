@@ -47,6 +47,14 @@ pub enum Opcode {
     CommGossip,
     /// O(1) Swarm Publish.
     CommPublish,
+    /// O(1) Raw Inline Assembly Block.
+    AsmBlock,
+    /// O(1) Volatile Memory Write.
+    VolatileWrite,
+    /// O(1) Volatile Memory Read.
+    VolatileRead,
+    /// O(1) Generic Atomic Operation.
+    AtomicGeneric,
     /// Halt execution.
     Halt,
 }
