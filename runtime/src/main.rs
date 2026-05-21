@@ -16,7 +16,7 @@ pub enum Opcode {
     DrawRect = 0x11,
     WinPoll = 0x12,
     DrawText = 0x13,
-    InputGet = 0x14,
+    InputGet = 0x14, ScreenCap = 0x15, StreamCap = 0x16, AsmBlock = 0x17, VolatileWrite = 0x18, VolatileRead = 0x19, AtomicOp = 0x1A, UIHologramStart = 0x1B, UIHologramEnd = 0x1C, UIPostProcess = 0x1D, UINeuroAdapt = 0x1E,
 }
 
 // Minimal 8x8 bitmap font for "Living GUI" (ASCII 32-126)
@@ -79,6 +79,8 @@ const FONT: [[u8; 8]; 82] = [
     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
 ];
 
+pub struct Particle { pub x: f32, pub y: f32, pub vx: f32, pub vy: f32, pub life: f32, }
+
 pub struct JUR {
     stack: Vec<f32>,
     window: Option<Window>,
@@ -89,10 +91,13 @@ pub struct JUR {
     _layout_x: usize,
     input_buffer: Vec<char>,
     is_recording: bool,
-    ffmpeg_child: Option<std::process::Child>,
+    ffmpeg_child: Option<std::process::Child>, particles: Vec<Particle>, parallax_offset: (f32, f32), alpha_modifier: f32, is_hologram: bool,
 }
 
 impl JUR {
+    fn blend(&self, bg: u32, fg: u32, alpha: f32) -> u32 { let r1 = ((bg >> 16) & 0xFF) as f32; let g1 = ((bg >> 8) & 0xFF) as f32; let b1 = (bg & 0xFF) as f32; let r2 = ((fg >> 16) & 0xFF) as f32; let g2 = ((fg >> 8) & 0xFF) as f32; let b2 = (fg & 0xFF) as f32; let r = (r1 * (1.0 - alpha) + r2 * alpha) as u32; let g = (g1 * (1.0 - alpha) + g2 * alpha) as u32; let b = (b1 * (1.0 - alpha) + b2 * alpha) as u32; (r << 16) | (g << 8) | b }
+    fn apply_glitch_fx(&mut self, intensity: f32) { if self.buffer.is_empty() { return; } let shift = (intensity * 10.0) as usize; let mut new_buf = self.buffer.clone(); for i in shift..self.buffer.len()-shift { let r = (self.buffer[i - shift] >> 16) & 0xFF; let g = (self.buffer[i] >> 8) & 0xFF; let b = self.buffer[i + shift] & 0xFF; new_buf[i] = (r << 16) | (g << 8) | b; } for y in (0..self.height).step_by(2) { for x in 0..self.width { let idx = y * self.width + x; let p = new_buf[idx]; let r = ((p >> 16) & 0xFF) / 2; let g = ((p >> 8) & 0xFF) / 2; let b = (p & 0xFF) / 2; new_buf[idx] = (r << 16) | (g << 8) | b; } } self.buffer = new_buf; }
+    fn update_particles(&mut self) { let w = self.width as f32; let h = self.height as f32; for p in &mut self.particles { p.x += p.vx; p.y += p.vy; p.life -= 0.01; if p.x < 0.0 || p.x >= w || p.y < 0.0 || p.y >= h { p.life = 0.0; } } self.particles.retain(|p| p.life > 0.0); for p in &self.particles { let idx = (p.y as usize) * self.width + (p.x as usize); if idx < self.buffer.len() { self.buffer[idx] = 0x00f0ff; } } }
     pub fn new() -> Self {
         Self {
             stack: Vec::new(),
@@ -104,7 +109,7 @@ impl JUR {
             _layout_x: 0,
             input_buffer: Vec::new(),
             is_recording: false,
-            ffmpeg_child: None,
+            ffmpeg_child: None, particles: Vec::new(), parallax_offset: (0.0, 0.0), alpha_modifier: 1.0, is_hologram: false,
         }
     }
 
@@ -146,10 +151,10 @@ impl JUR {
         for row in 0..8 {
             for col in 0..8 {
                 if (glyph[row] & (1 << (7 - col))) != 0 {
-                    let px = x + col;
-                    let py = y + row;
+                    let (ox, oy) = if self.is_hologram { (self.parallax_offset.0 as i32, self.parallax_offset.1 as i32) } else { (0, 0) }; let px = (x as i32 + col as i32 + ox) as usize;
+                    let py = (y as i32 + row as i32 + oy) as usize;
                     if px < self.width && py < self.height {
-                        self.buffer[py * self.width + px] = color;
+                        if self.alpha_modifier < 1.0 { let bg = self.buffer[py * self.width + px]; self.buffer[py * self.width + px] = self.blend(bg, color, self.alpha_modifier); } else { self.buffer[py * self.width + px] = color; }
                     }
                 }
             }
@@ -422,8 +427,12 @@ impl JUR {
                     self.stack.push(42.0); // Simulated hardware response
                 }
                 0x1A => { // AtomicOp
-                    println!("[JUR] [CONCURRENCY] Atomic Operation Executed");
+                    println!("[JUR] [DEBUG] Atomic Operation Executed");
                 }
+                0x1B => { let d = self.stack.pop().unwrap_or(1.0); self.is_hologram = true; self.parallax_offset = (d * 5.0, d * 2.0); self.alpha_modifier = 0.6; }
+                0x1C => { self.is_hologram = false; self.alpha_modifier = 1.0; }
+                0x1D => { let i = self.stack.pop().unwrap_or(0.0); self.apply_glitch_fx(i); }
+                0x1E => { let l = self.stack.pop().unwrap_or(0.0); if l > 0.8 { println!("[NEURO] Focus Mode."); } }
                 0x00 => { // Halt
                     if self.window.is_none() && !self.buffer.is_empty() {
                         let active_pixels = self.buffer.iter().filter(|&&p| p != 0x050506).count();
