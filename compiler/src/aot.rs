@@ -55,6 +55,10 @@ pub enum Opcode {
     VolatileRead,
     /// O(1) Generic Atomic Operation.
     AtomicGeneric,
+    /// O(1) Port Memory Write.
+    PortWrite,
+    /// O(1) Port Memory Read.
+    PortRead,
     /// O(Pixels) Start Holographic Rendering.
     UIHologramStart,
     /// Stop Holographic Rendering.

@@ -12,10 +12,14 @@ pub struct AotBackend<'a> {
 }
 
 pub struct ElfBinary {
-    pub header: [u8; 64],
+    pub elf_header: [u8; 64],
+    pub multiboot_header: Vec<u8>,
     pub code_section: Vec<u8>,
     pub metadata_section: Vec<u8>,
 }
+
+const MULTIBOOT2_MAGIC: u32 = 0xE85250D6;
+const MULTIBOOT2_ARCH: u32 = 0; // i386 (protected mode)
 
 impl<'a> AotBackend<'a> {
     pub fn new() -> Self {
@@ -36,15 +40,43 @@ impl<'a> AotBackend<'a> {
         // 2. Generate Metadata Section (Big-O, Energy)
         let metadata = self.generate_metadata();
         
-        // 3. Construct ELF Header
-        let mut header = [0u8; 64];
-        header[0..4].copy_from_slice(b"\x7fELF"); // Magic
+        // 3. Generate Multiboot2 Header
+        let multiboot = self.generate_multiboot2_header();
+
+        // 4. Construct ELF Header (ELF64)
+        let mut elf_header = [0u8; 64];
+        elf_header[0..4].copy_from_slice(b"\x7fELF"); // Magic
+        elf_header[4] = 2; // 64-bit
+        elf_header[5] = 1; // Little Endian
+        elf_header[6] = 1; // ELF Version 1
+        elf_header[7] = 0; // System V ABI
+        elf_header[16..18].copy_from_slice(&2u16.to_le_bytes()); // ET_EXEC
+        elf_header[18..20].copy_from_slice(&0x3Eu16.to_le_bytes()); // x86_64
         
         Ok(ElfBinary {
-            header,
+            elf_header,
+            multiboot_header: multiboot,
             code_section: code,
             metadata_section: metadata,
         })
+    }
+
+    fn generate_multiboot2_header(&self) -> Vec<u8> {
+        let mut header = Vec::new();
+        let header_length = 16u32; // Magic + Arch + Length + Checksum
+        let checksum = u32::MAX.wrapping_sub(MULTIBOOT2_MAGIC.wrapping_add(MULTIBOOT2_ARCH).wrapping_add(header_length)).wrapping_add(1);
+
+        header.extend_from_slice(&MULTIBOOT2_MAGIC.to_le_bytes());
+        header.extend_from_slice(&MULTIBOOT2_ARCH.to_le_bytes());
+        header.extend_from_slice(&header_length.to_le_bytes());
+        header.extend_from_slice(&checksum.to_le_bytes());
+
+        // End Tag
+        header.extend_from_slice(&0u16.to_le_bytes()); // Type 0
+        header.extend_from_slice(&0u16.to_le_bytes()); // Flags 0
+        header.extend_from_slice(&8u32.to_le_bytes()); // Size 8
+
+        header
     }
 
     fn lower(&mut self, node: &'a Node<'a>) -> Result<NativeImage, String> {
@@ -172,6 +204,47 @@ impl<'a> AotBackend<'a> {
                     self.lower_stmt(s)?;
                 }
             }
+            Stmt::For { body, .. } => {
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
+            }
+            Stmt::If { then_branch, else_branch, .. } => {
+                for s in then_branch {
+                    self.lower_stmt(s)?;
+                }
+                if let Some(eb) = else_branch {
+                    for s in eb {
+                        self.lower_stmt(s)?;
+                    }
+                }
+            }
+            Stmt::Prob { branches } => {
+                for (_w, b) in branches {
+                    for s in b {
+                        self.lower_stmt(s)?;
+                    }
+                    self.emit(Opcode::UINeuroAdapt, 0.05);
+                }
+            }
+            Stmt::Sync { body, .. } => {
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
+                self.emit(Opcode::CommSync, 2000.0);
+            }
+            Stmt::Knowledge { .. } => {
+                self.emit(Opcode::Broadcast, 0.02);
+            }
+            Stmt::Evolve { body } => {
+                for s in body {
+                    self.lower_stmt(s)?;
+                }
+                self.emit(Opcode::AtomicSwap, 0.1);
+            }
+            Stmt::Memory { .. } => {
+                self.emit(Opcode::VolatileWrite, 0.1);
+            }
             Stmt::Return { value } => {
                 if let Some(v) = value {
                     self.lower_expr(v)?;
@@ -189,12 +262,6 @@ impl<'a> AotBackend<'a> {
                 for s in body {
                     self.lower_stmt(s)?;
                 }
-            }
-            Stmt::Sync { body, .. } => {
-                for s in body {
-                    self.lower_stmt(s)?;
-                }
-                self.emit(Opcode::CommSync, 2000.0);
             }
             Stmt::Gossip { .. } => {
                 self.emit(Opcode::CommGossip, 150.0);
@@ -279,13 +346,21 @@ impl<'a> AotBackend<'a> {
                 self.lower_expr(address)?;
                 self.emit(Opcode::VolatileRead, 0.1);
             }
+            Stmt::PortWrite { port, value } => {
+                self.lower_expr(port)?;
+                self.lower_expr(value)?;
+                self.emit(Opcode::PortWrite, 0.1);
+            }
+            Stmt::PortRead { port, .. } => {
+                self.lower_expr(port)?;
+                self.emit(Opcode::PortRead, 0.1);
+            }
             Stmt::AtomicOp { args, .. } => {
                 for arg in args {
                     self.lower_expr(arg)?;
                 }
                 self.emit(Opcode::AtomicGeneric, 0.2);
             }
-            _ => {}
         }
         Ok(())
     }
@@ -373,6 +448,8 @@ impl<'a> AotBackend<'a> {
                 Opcode::VolatileWrite => bytes.push(0x18),
                 Opcode::VolatileRead => bytes.push(0x19),
                 Opcode::AtomicGeneric => bytes.push(0x1A),
+                Opcode::PortWrite => bytes.push(0x1F),
+                Opcode::PortRead => bytes.push(0x20),
                 Opcode::UIHologramStart => bytes.push(0x1B),
                 Opcode::UIHologramEnd => bytes.push(0x1C),
                 Opcode::UIPostProcess => bytes.push(0x1D),
