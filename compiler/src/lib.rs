@@ -114,6 +114,195 @@ mod tests {
     }
 
     #[test]
+    fn test_multiboot2_and_elf64_emission() {
+        let source = "module Boot complexity O(1) { func _start() {} }";
+        let lexer = crate::lexer::Lexer::new(source);
+        let mut parser = crate::parser::Parser::new(lexer);
+        let ast = parser.parse_module().unwrap();
+
+        let mut backend = crate::backend::AotBackend::new();
+        let elf = backend.lower_to_elf(&ast).expect("Failed to lower to ELF");
+
+        // Verify ELF64 Header
+        assert_eq!(&elf.elf_header[0..4], b"\x7fELF");
+        assert_eq!(elf.elf_header[4], 2); // 64-bit
+        assert_eq!(elf.elf_header[5], 1); // Little Endian
+        assert_eq!(elf.elf_header[18], 0x3E); // x86_64 (machine)
+
+        // Verify Multiboot2 Header
+        let mb = &elf.multiboot_header;
+        assert_eq!(mb[0..4], 0xE85250D6u32.to_le_bytes()); // Magic
+        assert_eq!(mb[4..8], 0u32.to_le_bytes()); // Arch
+        assert_eq!(mb[8..12], 16u32.to_le_bytes()); // Length
+        
+        // Verify Checksum
+        let magic = 0xE85250D6u32;
+        let arch = 0u32;
+        let length = 16u32;
+        let checksum = u32::from_le_bytes(mb[12..16].try_into().unwrap());
+        assert_eq!(magic.wrapping_add(arch).wrapping_add(length).wrapping_add(checksum), 0);
+    }
+
+    #[test]
+    fn test_hal_intrinsics() {
+        let source = r#"
+            module HAL
+            complexity O(1)
+            {
+                @interrupt("0x80")
+                func handle_syscall() {
+                    port write(0x20, 0x20); // EOI
+                    port read(0x60) -> key;
+                }
+            }
+        "#;
+        let lexer = crate::lexer::Lexer::new(source);
+        let mut parser = crate::parser::Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse HAL module");
+
+        let mut backend = crate::backend::AotBackend::new();
+        let elf = backend.lower_to_elf(&ast).expect("Failed to lower to ELF");
+        
+        let metadata = String::from_utf8_lossy(&elf.metadata_section);
+        assert!(metadata.contains("INTERRUPT:0x80"));
+        
+        let code = &elf.code_section;
+        assert!(code.contains(&0x1F)); // PortWrite
+        assert!(code.contains(&0x20)); // PortRead
+    }
+
+    #[test]
+    fn test_structural_types_struct() {
+        let source = r#"
+            module Data
+            complexity O(1)
+            {
+                struct Point {
+                    x: f32,
+                    y: f32,
+                    id: i32
+                }
+
+                verify { test "move" {} }
+                func move(p: Point) {
+                    let new_x = 10.0;
+                }
+            }
+        "#;
+        let lexer = crate::lexer::Lexer::new(source);
+        let mut parser = crate::parser::Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse Data module");
+
+        let verifier = crate::semantics::OmegaVerifier::new();
+        assert!(verifier.verify(&ast).is_ok());
+
+        if let Node::Module { body, .. } = ast {
+            let complexity_block = &body[0];
+            if let Node::ComplexityBlock { content, .. } = complexity_block {
+                let struct_node = &content[0];
+                if let Node::Struct { name, fields } = struct_node {
+                    assert_eq!(*name, "Point");
+                    assert_eq!(fields.len(), 3);
+                    assert_eq!(fields[0].0, "x");
+                } else {
+                    panic!("Expected Struct node, got {:?}", struct_node);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_multi_file_import() {
+        let source = r#"
+            import "std/math.jrv"
+            import Network
+            module App
+            complexity O(1) {
+                verify { test "start" {} }
+                func start() {
+                }
+            }
+        "#;
+        let lexer = crate::lexer::Lexer::new(source);
+        let mut parser = crate::parser::Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse App module");
+
+        if let Node::Module { body, .. } = ast {
+            assert!(matches!(body[0], Node::Import { path: "std/math.jrv" }));
+            assert!(matches!(body[1], Node::Import { path: "Network" }));
+        }
+    }
+
+    #[test]
+    fn test_static_memory_initialization() {
+        let source = r#"
+            module Boot
+            complexity O(1) {
+                static VGA_BUFFER [0xB8000] {
+                    size: 32000
+                }
+
+                verify { test "clear" {} }
+                func clear_screen() {
+                }
+            }
+        "#;
+        let lexer = crate::lexer::Lexer::new(source);
+        let mut parser = crate::parser::Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse Boot module");
+
+        let verifier = crate::semantics::OmegaVerifier::new();
+        assert!(verifier.verify(&ast).is_ok());
+
+        if let Node::Module { body, .. } = ast {
+            let complexity_block = &body[0];
+            if let Node::ComplexityBlock { content, .. } = complexity_block {
+                let static_node = &content[0];
+                if let Node::Static { name, address, size } = static_node {
+                    assert_eq!(*name, "VGA_BUFFER");
+                    assert_eq!(*address, 0xB8000);
+                    assert_eq!(*size, 32000);
+                } else {
+                    panic!("Expected Static node, got {:?}", static_node);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_for_loop_and_scifi_energy() {
+        let source = r#"
+            module Scifi
+            complexity O(N) {
+                verify { test "loops" {} }
+                func process(data: Stream) {
+                    budget { power: 30000_nj }
+                    for x in data {
+                        print(x, 0, 0, 1);
+                    }
+                    
+                    prob {
+                        0.5 => return 1,
+                        0.5 => return 0,
+                    }
+                }
+            }
+        "#;
+        let lexer = crate::lexer::Lexer::new(source);
+        let mut parser = crate::parser::Parser::new(lexer);
+        let ast = parser.parse_module().expect("Failed to parse Scifi module");
+
+        let verifier = crate::semantics::OmegaVerifier::new();
+        if let Err(e) = verifier.verify(&ast) {
+            panic!("Verifier Error: {}", e);
+        }
+
+        let mut backend = crate::backend::AotBackend::new();
+        let elf = backend.lower_to_elf(&ast).expect("Failed to lower to ELF");
+        assert!(elf.code_section.len() > 0);
+    }
+
+    #[test]
     fn test_windowing_and_rendering() {
         let source = r#"
             module GUI
