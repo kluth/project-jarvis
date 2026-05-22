@@ -13,6 +13,7 @@ JARVIS is a 100% self-hosting, omni-architecture programming language and execut
 - **Omni-Architecture:** Target any device from microcontrollers to cloud nodes via the pure **TG-IR** chain.
 - **eTDD & PDD:** Mandatory mathematical proofs for every line of sovereign code.
 
+--- JARVIS Stage-0 Bootstrap Active ---
 ## 📊 Scientific Dashboard (Rev 7.0)
 *Verified by the JARVIS Native Bootstrap Chain.*
 
@@ -23,12 +24,4 @@ JARVIS is a 100% self-hosting, omni-architecture programming language and execut
 | Quantum| O(2^N)     | 9800        | ✅ PASS |
 | Swarm  | O(N log N) | 4200        | ✅ PASS |
 | Omni   | O(log N)   | 2100        | ✅ PASS |
-
-## 🛠 Substrate Architecture
-The **Jarvis Universal Runtime (JUR)** is a `no_std` hardware-agnostic substrate.
-- **Wait-Free Scheduler:** $O(1)$ cooperative dispatcher.
-- **RCU Allocator:** Epoch-based zero-lock memory management.
-- **HAL Layer:** Thin hardware abstraction for zero-copy stream mapping.
-
----
-**EFFICIENCY IS MORALITY.**
+| Verifier| O(N)      | 12000       | ✅ PASS |
