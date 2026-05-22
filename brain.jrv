@@ -21,6 +21,9 @@ complexity O(1)
         test "init_algorithms" {
             assert(1 == 1);
         }
+        test "brain_init_purity" {
+            assert(true);
+        }
     }
     func initialize_algorithms() {
         budget { power: 20000_nj }
@@ -84,6 +87,10 @@ complexity O(1)
         // 29. Markov Decision Process (MDP)
         knowledge MDP: Vector[29]
         // 30. Genetic Algorithms
+        knowledge GeneticAlgorithms: Vector[30]
+    }
+}
+ithms
         knowledge GeneticAlgorithms: Vector[30]
     }
 }

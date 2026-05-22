@@ -1,0 +1,20 @@
+{
+  "agent_id": "quantum-core-v1",
+  "domain": "quantum",
+  "capabilities": [
+    {
+      "name": "superposition_simulation",
+      "verification_method": "ZKP",
+      "energy_efficiency": 12.5
+    },
+    {
+      "name": "entanglement_routing",
+      "verification_method": "PDD",
+      "energy_efficiency": 45.0
+    }
+  ],
+  "constraints": {
+    "max_complexity": "O(N log N)",
+    "safety_level": 5
+  }
+}

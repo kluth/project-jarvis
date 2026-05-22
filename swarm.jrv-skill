@@ -1,0 +1,20 @@
+{
+  "agent_id": "swarm-consensus-v2",
+  "domain": "swarm",
+  "capabilities": [
+    {
+      "name": "gossip_verification",
+      "verification_method": "eTDD",
+      "energy_efficiency": 8.2
+    },
+    {
+      "name": "byzantine_fault_tolerance",
+      "verification_method": "StaticAnalysis",
+      "energy_efficiency": 120.5
+    }
+  ],
+  "constraints": {
+    "max_complexity": "O(N^2)",
+    "safety_level": 4
+  }
+}

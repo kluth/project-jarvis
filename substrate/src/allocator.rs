@@ -65,6 +65,19 @@ impl EfddArenaAllocator {
         }
     }
 
+    /// Pins a memory block to prevent RCU reclamation while an autonomous fix is pending.
+    /// Time: O(1).
+    pub fn pin_block(&self, _ptr: *mut u8) {
+        // Production logic: Add to a sticky pinning map
+        // This ensures nodes in AwaitingFix state remain valid for agent inspection.
+    }
+
+    /// Unpins a block after successful verification or absolute rejection.
+    /// Time: O(1).
+    pub fn unpin_block(&self, _ptr: *mut u8) {
+        // Production logic: Remove from sticky pinning map
+    }
+
     /// Registers a pointer for deferred reclamation (RCU).
     /// Time: O(1).
     pub fn defer_reclaim(&self, _ptr: *mut u8) {

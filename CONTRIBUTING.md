@@ -1,17 +1,17 @@
-# CONTRIBUTING TO PROJECT JARVIS
+# CONTRIBUTING TO PROJECT JARVIS: THE SOVEREIGN STANDARD
 
-## The OMEGA Standard
+## 1. Total Substrate Purity (Rev 7.0)
+All core logic, substrates, and tools MUST be implemented strictly in pure `.jrv`. The use of Rust, C, Python, or any other external language is STRICTLY FORBIDDEN. Project JARVIS is a self-hosting ecosystem; contributions that introduce external dependencies or `Cargo.toml` modifications will be rejected.
 
-### 1. Performance Driven Development (PDD)
-All code MUST declare its mathematical complexity in the documentation/signature. 
-Example: `func process_stream(data: Stream) -> Result [Complexity: O(N)]`
-The compiler will verify this. Mismatched complexity is a failure.
+## 2. Agent-First Regularity (Rev 6.0)
+Contributors must adhere to "Zero Sugar" syntax.
+- **Minimalism:** Use the most regular, unambiguous syntactic structure.
+- **Explicit Typing:** No implicit behaviors or inference.
+- **Machine-Readability:** Code is written for 1:1 agent-to-agent symbiosis.
 
-### 2. Zero-Dependency Mandate
-Do not add `Cargo.toml` dependencies. All algorithms must be handcrafted to ensure bare-metal optimization and zero bloat.
-
-### 3. Test-Driven Development (TDD)
-Tests are language primitives. A module without verified test suites will not compile.
+## 3. Mandatory Enforcement (eTDD & PDD)
+- **eTDD (Enforced TDD):** Every symbol MUST be preceded by a `verify` block.
+- **PDD (Performance Driven Development):** Every path MUST have a statically verified Big-O signature. Mismatched complexity is a compiler failure.
 
 ### 4. Git-Flow
 - All changes via `feature/` or `core/` branches.

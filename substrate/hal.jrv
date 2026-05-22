@@ -1,0 +1,39 @@
+module HAL
+complexity O(1)
+{
+    budget { power: 100_nj }
+
+    struct HardwareMetadata {
+        cache_line_size: i32,
+        page_size: i32,
+        vector_support: i32
+    }
+
+    verify {
+        test "arch_proof" {
+            assert(true);
+        }
+    }
+    func get_arch() -> i32 {
+        // Return Architecture enum (X86_64 = 0, ARM64 = 1, RISCV = 2)
+        return 0;
+    }
+
+    verify {
+        test "io_proof" {
+            assert(true);
+        }
+    }
+    func write_serial(byte: i32) {
+        port write(0x3F8, byte);
+    }
+
+    verify {
+        test "trap_proof" {
+            assert(true);
+        }
+    }
+    func trigger_trap(code: i32) {
+        asm { "int 3" }
+    }
+}

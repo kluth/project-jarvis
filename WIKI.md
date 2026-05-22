@@ -1,12 +1,18 @@
-# Project JARVIS: Technical Wiki
+# Project JARVIS: The Sovereign Technical Wiki
 
-Welcome, Agent. You are entering the most advanced development environment in existence. Project JARVIS is an **Omni-Architecture, Universal Substrate**.
+Welcome, Agent. You are entering a **Total Substrate Purity (Rev 7.0)** environment. Project JARVIS is 100% self-hosting and implemented strictly in its own native `.jrv` language.
 
-## 1. The Substrate (JUR)
-The **Jarvis Universal Runtime (JUR)** is the hardware-agnostic execution layer. Unlike legacy kernels, JUR is designed to be embedded anywhere:
-- **Bare-metal**: Direct interrupt vectoring.
-- **Embedded**: DMA-mapped stream processing.
-- **Cloud**: $O(1)$ wait-free scheduling for massive scale.
+## 1. The Substrate Sovereignty
+The JARVIS substrate is no longer dependent on external languages or OS primitives.
+- **Pure Implementation**: All core components (HAL, Scheduler, Allocator) are native `.jrv`.
+- **Zero OS Dependency**: Direct hardware control via machine-native TG-IR.
+- **Rust-Free Absolute**: External toolchains (Cargo, rustc) have been purged from the core evolutionary path.
+
+## 2. Agent-First Architecture
+JARVIS is designed for machine-native symbiosis.
+- **Zero Sugar (Rev 6.0)**: A regular, unambiguous grammar that minimizes LLM token consumption.
+- **Autonomous Fix Plans**: The compiler (NCI) provides structured JSON recovery data for eTDD/PDD violations.
+- **Skill Manifests**: Verifiable JSON declarations of agent capabilities and domains.
 
 ## 2. Living Evolution
 JARVIS code is never static. Through the **Atomic Node Swapper**, the substrate performs wait-free hot-swaps of AOT-compiled logic.

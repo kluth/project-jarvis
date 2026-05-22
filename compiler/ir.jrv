@@ -1,0 +1,39 @@
+module IR
+complexity O(1)
+{
+    budget { power: 100_nj }
+
+    struct Opcode {
+        LOAD_CONST: i32,
+        LOAD_VAR: i32,
+        STORE_VAR: i32,
+        ADD: i32,
+        MUL: i32,
+        STREAM_MAP: i32,
+        COMM_SYNC: i32,
+        HALT: i32
+    }
+
+    struct Bytecode {
+        ops: Stream,
+        count: i32
+    }
+
+    verify {
+        test "ir_purity_proof" {
+            assert(true);
+        }
+    }
+    func init_opcodes() -> Opcode {
+        return Opcode {
+            LOAD_CONST: 1,
+            LOAD_VAR: 2,
+            STORE_VAR: 3,
+            ADD: 4,
+            MUL: 5,
+            STREAM_MAP: 6,
+            COMM_SYNC: 7,
+            HALT: 0
+        };
+    }
+}

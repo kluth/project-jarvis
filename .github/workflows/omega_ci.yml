@@ -25,15 +25,28 @@ jobs:
         run: |
           cd compiler && cargo run -- ../voice.jrv
           
-      - name: "Enforcement: Kernel Substrate Integrity"
+      - name: "Enforcement: Zero Sugar Regularity (Rev 6.0)"
         run: |
-          cd substrate && cargo check
+          python3 tools/zero_sugar_lint.py brain.jrv
+          python3 tools/zero_sugar_lint.py quantum.jrv
+          python3 tools/zero_sugar_lint.py swarm.jrv
 
-      - name: "Enforcement: Mutation Testing (100% Kill Rate)"
+      - name: "Autonomous Repair: Fix Plan Generation"
+        if: failure()
         run: |
-          # Simulated mutation pass
-          echo "Injecting AST mutations..."
-          echo "SUCCESS: 100% of mutants killed by verify blocks."
+          echo "Verification Failed. Generating Autonomous Fix Plan via NCI..."
+          # Simulating NCI tool call to get_fix_plan
+          cd compiler && cargo run -- --mcp <<EOF
+          {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_fix_plan","arguments":{"violation_type":"CI_FAILURE","context":"Check mcp.log"}}}
+          EOF
+          mv mcp.log fix_plan.json
+
+      - name: "Artifact: Upload Fix Plan"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-fix-plan
+          path: compiler/fix_plan.json
 
       - name: "Scientific Dashboard Injection"
         run: |

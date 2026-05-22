@@ -18,8 +18,12 @@ pub struct Scheduler {
     swapper: AtomicNodeSwapper,
     sandbox: Sandbox,
     queue: [UnsafeCell<*mut crate::evolution::NodeContainer>; MAX_TASKS],
+    /// Priority queue for nodes in AwaitingFix state (Rev 6.0)
+    fix_queue: [UnsafeCell<*mut crate::evolution::NodeContainer>; MAX_TASKS],
     head: AtomicUsize,
     tail: AtomicUsize,
+    fix_head: AtomicUsize,
+    fix_tail: AtomicUsize,
 }
 
 impl Scheduler {
@@ -32,8 +36,11 @@ impl Scheduler {
             swapper: AtomicNodeSwapper::new(initial_node),
             sandbox: Sandbox::new(),
             queue: [EMPTY_CELL; MAX_TASKS],
+            fix_queue: [EMPTY_CELL; MAX_TASKS],
             head: AtomicUsize::new(0),
             tail: AtomicUsize::new(0),
+            fix_head: AtomicUsize::new(0),
+            fix_tail: AtomicUsize::new(0),
         }
     }
 
@@ -55,20 +62,34 @@ impl Scheduler {
         Ok(())
     }
 
-    /// Dispatches the next available task from the queue.
+    /// Dispatches the next available task, prioritizing self-healing fix plans.
     /// Time: O(1)
     pub fn dispatch(&self) {
-        let head = self.head.load(Ordering::Acquire);
-        if head == self.tail.load(Ordering::Acquire) {
-            return; // No tasks pending
+        // 1. Priority 1: Self-Healing Tasks (Rev 6.0)
+        let fix_head = self.fix_head.load(Ordering::Acquire);
+        if fix_head != self.fix_tail.load(Ordering::Acquire) {
+            self.dispatch_from_queue(&self.fix_queue, &self.fix_head, fix_head);
+            return;
         }
 
-        let container_ptr = unsafe { *self.queue[head].get() };
+        // 2. Priority 2: Standard Data Processing
+        let head = self.head.load(Ordering::Acquire);
+        if head != self.tail.load(Ordering::Acquire) {
+            self.dispatch_from_queue(&self.queue, &self.head, head);
+        }
+    }
+
+    fn dispatch_from_queue(
+        &self, 
+        q: &[UnsafeCell<*mut crate::evolution::NodeContainer>; MAX_TASKS], 
+        h_ptr: &AtomicUsize, 
+        head: usize
+    ) {
+        let container_ptr = unsafe { *q[head].get() };
         if !container_ptr.is_null() {
             let container = unsafe { &*container_ptr };
             let node = unsafe { &*container.instance };
             
-            // PDD: Execute and monitor for violations
             match node.execute() {
                 Ok(_) => {},
                 Err(EvolutionError::MathematicalAnomaly) => {
@@ -77,8 +98,7 @@ impl Scheduler {
                 _ => {}
             }
         }
-
-        self.head.store((head + 1) % MAX_TASKS, Ordering::Release);
+        h_ptr.store((head + 1) % MAX_TASKS, Ordering::Release);
     }
 
     /// The core execution tick, typically called from a hardware interrupt or main loop.

@@ -1,19 +1,19 @@
 # ADR 003: Neuro-Symbolic Primitives & Self-Evolution
 
 ## Status
-Proposed
+Accepted - Rev 7.0 Native Neuro-Symbolics
 
 ## Context
-Standard procedural languages lack the vocabulary to describe persistent AI state and autonomous algorithmic optimization.
+Standard procedural languages lack the vocabulary to describe persistent AI state and autonomous algorithmic optimization in a pure substrate.
 
 ## Decision
-JARVIS will implement "Temporal Memory" and "Evolving Blocks" as first-class citizens.
+JARVIS implements "Temporal Memory" and "Evolving Blocks" as native first-class citizens.
 
 ### 1. Temporal Memory (`memory`)
-Variables declared as `memory` persist between function calls across a stream. The compiler manages the lifecycle of these tensors, ensuring zero-copy access during real-time processing.
+Variables declared as `memory` persist between function calls across a stream. The native compiler manages the lifecycle of these tensors.
 
 ### 2. Evolving Blocks (`evolve`)
-An `evolve` block signals to the compiler that the internal logic can be mutated for performance. During compilation, JARVIS-LLVM (or custom backend) will benchmark multiple implementation candidates (e.g., SIMD vs. Neural vs. DSP) to find the optimal execution path for the target hardware.
+An `evolve` block signals to the compiler that the internal logic can be mutated for performance. During compilation, the native JARVIS backend benchmarks multiple implementation candidates to find the optimal execution path for the target hardware.
 
 ### 3. Neural-Mapping (`neural`)
 Syntax for direct mapping of tensor operations to NPU/GPU substrates.

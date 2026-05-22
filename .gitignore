@@ -1,8 +1,17 @@
-/target/
-compiler/target/
-substrate/target/
-**/*.rs.bk
-.DS_Store
+# Project JARVIS: Rev 7.0 Total Substrate Purity
 **/target/
+*.rs
+*.rs.bk
+Cargo.toml
+Cargo.lock
+
+# Binary Noise & Bootstrap Artifacts
 *.elf
+*.bin
 mcp.log
+fix_plan.json
+dashboard.txt
+
+# OS Junk
+.DS_Store
+.env

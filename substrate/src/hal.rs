@@ -17,6 +17,14 @@ pub trait HardwareInterface {
     /// Identifies the underlying architecture.
     fn get_arch(&self) -> Architecture;
 
+    /// Verifies that an agent's Skill Manifest permits hardware access.
+    /// Time: O(1).
+    fn verify_skill_access(&self, manifest: &crate::evolution::SkillManifest) -> Result<(), HalError>;
+
+    /// Returns architecture-specific metadata as a structured JSON-like blob.
+    /// Time: O(1).
+    fn get_hardware_metadata(&self) -> HardwareMetadata;
+
     /// Configures a DMA region for high-speed stream mapping.
     /// Time: O(1).
     fn configure_dma(&self, start_addr: *mut u8, size: usize) -> Result<(), HalError>;
@@ -38,12 +46,22 @@ pub trait HardwareInterface {
     fn write_serial(&self, byte: u8);
 }
 
+/// Structured hardware facts for agent-first introspection.
+#[derive(Debug, Clone, Copy)]
+pub struct HardwareMetadata {
+    pub cache_line_size: u8,
+    pub page_size: u16,
+    pub supports_vector_ops: bool,
+    pub power_efficiency_rating: u8,
+}
+
 #[derive(Debug)]
 pub enum HalError {
     InvalidAddress,
     DmaConfigurationFailed,
     InterruptRegistrationFailed,
     UnsupportedArchitecture,
+    PermissionDenied,
 }
 
 /// Global HAL instance pointer, initialized during boot.

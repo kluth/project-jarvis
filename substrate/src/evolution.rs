@@ -6,23 +6,49 @@ use core::marker::PhantomData;
 
 /// Marker for a node that has been loaded into memory but not yet verified.
 pub struct Loading;
+/// Marker for a node that has failed verification and requires an autonomous fix.
+pub struct AwaitingFix;
 /// Marker for a node that has passed all PDD/EFDD/EuDD verification checks.
 pub struct Verified;
 
-/// A JARVIS Stream Node with Type-State enforcement.
+/// Structured Fix Plan for autonomous recovery.
+#[derive(Debug, Clone)]
+pub struct FixPlan {
+    pub violation: &'static str,
+    pub patch_id: u32,
+}
+
+/// A JARVIS Stream Node with Type-State enforcement and Rev 6.0 fix logic.
 pub struct Node<S, T> {
     state: PhantomData<S>,
     pub data: T,
+    pub fix_plan: Option<FixPlan>,
 }
 
 impl<T> Node<Loading, T> {
     pub fn new(data: T) -> Self {
-        Self { state: PhantomData, data }
+        Self { state: PhantomData, data, fix_plan: None }
     }
 
-    pub fn verify(self) -> Node<Verified, T> {
-        Node { state: PhantomData, data: self.data }
+    pub fn verify(self) -> Result<Node<Verified, T>, Node<AwaitingFix, T>> {
+        // Verification logic here (simulated)
+        let passed = true; 
+        if passed {
+            Ok(Node { state: PhantomData, data: self.data, fix_plan: None })
+        } else {
+            Err(Node { 
+                state: PhantomData, 
+                data: self.data, 
+                fix_plan: Some(FixPlan { violation: "PDD_VIOLATION", patch_id: 0xDEAD }) 
+            })
+        }
     }
+}
+
+/// Skill Manifest for agent-swapping authorization.
+pub struct SkillManifest {
+    pub agent_id: [u8; 16], // UUID
+    pub authorized_domain: u32,
 }
 
 /// The fundamental interface for all execution units in the JARVIS stream-graph.

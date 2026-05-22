@@ -1,20 +1,19 @@
 # ADR 000: Open-Source Governance & Repository Architecture
 
 ## Status
-Proposed
+Accepted - Rev 7.0 Total Substrate Purity
 
 ## Context
-Project JARVIS requires a flagship open-source structure that facilitates scaling from 8-bit MCUs to distributed supercomputers while enforcing architectural perfection.
+Project JARVIS requires a flagship open-source structure that facilitates scaling from 8-bit MCUs to distributed supercomputers while enforcing architectural perfection in a 100% self-hosted environment.
 
 ## Decision
-We adopt a monorepo structure with strict isolation between the toolchain, the substrate, and the language specifications.
+We adopt a monorepo structure implemented strictly in pure `.jrv`.
 
 ### Repository Layout
-- `/compiler`: Handcrafted Rust-based OMNI-Target compiler.
-- `/substrate`: Bare-metal JARVIS Universal Substrate substrate.
+- `/compiler`: Native `.jrv` OMNI-Target compiler.
+- `/substrate`: Pure `.jrv` bare-metal JARVIS Universal Substrate.
 - `/specs`: Formal language and PDD definitions.
 - `/docs/adrs`: Architecture Decision Records.
-- `/stdlib`: The JARVIS core library (Test-First).
 
 ### Governance Model
 - **Licensing:** MIT License for maximum adoption.

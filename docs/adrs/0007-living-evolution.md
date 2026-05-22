@@ -1,21 +1,19 @@
-# ARCHITECTURAL BLUEPRINT: LIVING EVOLUTION (LE) SUBSYSTEM
+# ADR 007: THE LIVING EVOLUTION (LE) SUBSYSTEM
+
+## Status
+Accepted - Rev 7.0 Native Evolution
 
 ## 1. Memory Management: EFDD Arena Allocator
-To adhere to **EFDD (Environmentally Friendly Driven Development)**, we must minimize memory bus activity and keep DRAM banks in low-power states by maximizing data locality.
+To adhere to **EFDD (Environmentally Friendly Driven Development)**, we minimize memory bus activity and optimize leakage-current states within the pure substrate.
 
-- **Structure:** The `EfddArenaAllocator` utilizes a single contiguous block of pre-allocated bare-metal memory. 
-- **Alignment:** Every allocation is forced to a 64-byte boundary (Cache-Line size). This prevents "False Sharing" at the hardware level and ensures that a single NPU/CPU burst fetch retrieves the entire node header, minimizing the energy-per-instruction (EPI) penalty.
-- **Reclamation:** We avoid non-deterministic GC. Reclamation occurs via **Epoch-Based Handover**. When a node is hot-swapped, it enters a "Retiring" state. It is only physically deallocated once the global Epoch counter has advanced beyond the point where any active stream-graph thread could hold a reference.
+- **Structure:** The `EfddArenaAllocator` (allocator.jrv) utilizes a contiguous block of pre-allocated machine memory. 
+- **Alignment:** Every allocation is forced to a 64-byte boundary.
+- **Reclamation:** Reclamation occurs via **Epoch-Based Handover** within the native RCU system.
 
-## 2. Wait-Free Node Swapping (RCU/Epochs)
-Traditional locking (Mutex/Spinlock) is an **EFDD violation** as it burns cycles without productive output.
-
-- **Mechanism:** We use a **Read-Copy-Update (RCU)** pattern.
-- **Operation:**
-  1. The "Living Evolution" compiler prepares a new node in the Arena.
-  2. The Verifier proves compliance (TDD/PDD/EFDD).
-  3. An `AtomicPtr::swap` operation ($O(1)$) replaces the active execution pointer.
-- **Safety:** We use `Acquire/Release` memory barriers. `Release` ensures that all data written to the new node is visible to all cores *before* the pointer becomes public. `Acquire` ensures that the execution engine sees the most recent stable implementation.
+## 2. Wait-Free Node Swapping
+Wait-free hot-swapping is a core primitive of the pure substrate (evolution.jrv).
+- **Mechanism:** A native **Read-Copy-Update (RCU)** pattern using atomic pointers.
+- **Safety:** All swaps are guarded by Skill Manifest authorization and pre-verified fix plans.
 
 ## 3. ABI Compatibility & State Handover
 The `memory` primitives in JARVIS hold persistent state. Hot-swapping must not corrupt this state.

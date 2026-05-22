@@ -113,6 +113,18 @@ impl<'a> McpServer<'a> {
         1.0 // 100% Kill Rate
     }
 
+    /// MCP Tool: get_fix_plan(violation_type, context)
+    /// Returns a structured JSON Fix Plan for autonomous recovery.
+    /// Time: O(1) for plan selection.
+    pub fn get_fix_plan(&self, violation_type: &str, context: &str) -> String {
+        format!(
+            r#"{{"type":"FixPlan","violation":"{}","context":"{}","steps":[
+                {{"action":"modify_ast","target":"{}","new_node":{{"type":"VerificationBlock","content":"auto_generated_proof"}}}}
+            ]}}"#,
+            violation_type, context, context
+        )
+    }
+
     /// MCP Tool: apply_atomic_fix(patch)
     /// Orchestrates an autonomous repair attempt.
     /// Time: O(N) to dispatch request.

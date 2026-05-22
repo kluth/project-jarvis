@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JARVIS Skill Manifest",
+  "description": "Defines the verifiable capabilities and operational domain of a JARVIS AI agent.",
+  "type": "object",
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "description": "Unique identifier for the agent (e.g., quantum-v1)"
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["quantum", "bio", "neuro", "swarm", "omni", "substrate"],
+      "description": "The primary logical domain of the agent."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "verification_method": {
+            "type": "string",
+            "enum": ["ZKP", "eTDD", "PDD", "StaticAnalysis"]
+          },
+          "energy_efficiency": {
+            "type": "number",
+            "description": "Average nJ per operation for this skill."
+          }
+        },
+        "required": ["name", "verification_method"]
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "max_complexity": { "type": "string", "description": "Big-O ceiling (e.g., O(N^2))" },
+        "safety_level": { "type": "integer", "minimum": 0, "maximum": 5 }
+      }
+    }
+  },
+  "required": ["agent_id", "domain", "capabilities"]
+}

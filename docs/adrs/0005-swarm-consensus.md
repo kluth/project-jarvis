@@ -1,29 +1,19 @@
 # ADR 005: Swarm Consensus & Genetic Feedback Loops
 
 ## Status
-Proposed
+Accepted - Rev 7.0 Native Swarm Consensus
 
 ## Context
-AI-first languages must operate across clusters of sensors and compute nodes without manual synchronization bloat.
+AI-first languages must operate across clusters of compute nodes without manual synchronization bloat in a pure substrate.
 
 ## Decision
-JARVIS will implement **Swarm Consensus** and **Metric-Driven Feedback**.
+JARVIS implements **Swarm Consensus** and **Metric-Driven Feedback** as native language features.
 
 ### 1. Swarm Consensus (`sync`)
-The `sync` block ensures that the state of a `memory` variable is consistent across the swarm using a specific protocol.
-Example:
-```jrv
-sync (protocol: Raft) {
-    memory SwarmState: i32 = 0;
-}
-```
-The compiler verifies the latency cost ($O(N \log N)$ network overhead) and includes it in the Entropy Budget.
+The `sync` block ensures that the state of a `memory` variable is consistent across the swarm using native protocols (e.g., Raft). The compiler verifies the latency cost and includes it in the Entropy Budget.
 
-### 2. Genetic Feedback (`feedback`)
-Modules can now include a `feedback` block that the VM uses to store execution metrics (latency, energy, accuracy). The compiler reads this "Genetic Log" during the next compilation cycle to steer `evolve` block implementations.
-
-### 3. Native Gossip Primitives
-Syntax for unstructured state propagation: `gossip(state, topology: Grid);`
+### 2. Native Gossip Primitives
+Syntax for unstructured state propagation: `gossip "target.bridge";`
 
 ## Consequences
 - Decentralized AI state management is now a language feature.
