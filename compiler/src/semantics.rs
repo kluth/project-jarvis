@@ -214,7 +214,7 @@ impl OmegaVerifier {
         max
     }
 
-    fn estimate_stmt_cost(&self, stmt: &Stmt) -> f32 {
+    pub(crate) fn estimate_stmt_cost(&self, stmt: &Stmt) -> f32 {
         match stmt {
             Stmt::Expression { expr } => self.estimate_expr_cost(expr),
             Stmt::Let { value, .. } => 0.1 + self.estimate_expr_cost(value),
