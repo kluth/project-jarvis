@@ -66,7 +66,14 @@ complexity O(N)
         let align = 64;
         let walked = tg_ir.walk_struct_fields(name);
         let raw_size = tg_ir.sum_field_sizes(walked);
-        let padded = raw_size + (align - (raw_size % align));
+        // Only pad when raw_size is not already aligned. The naive
+        // (align - raw_size%align) would inject an entire extra 64-byte
+        // block when raw_size is already a multiple of align — wasted
+        // RCU slab and misaligned downstream offsets.
+        let padded = raw_size;
+        if raw_size % align != 0 {
+            padded = raw_size + (align - (raw_size % align));
+        }
 
         return StructLayout {
             name: name,

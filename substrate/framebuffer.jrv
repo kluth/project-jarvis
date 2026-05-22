@@ -183,17 +183,20 @@ complexity O(N)
     }
 
     func add_blend(x: i32, y: i32, tint: UI.Palette.Color) {
-        // Reads the current pixel, blends with tint (saturating), writes back.
+        // Atomic read-modify-write on a 24bpp triplet. The triplet is
+        // read as a single packed u24 word, blended saturating with `tint`,
+        // and committed via `atomic store`. A preempted reader observes
+        // either the prior triplet or the new one — never a torn mix.
         let v = view();
         let offset = v.base + y * v.stride + x * 3;
+        let cur_packed = tg_ir.fb_read_u24_atomic(offset);
         let cur = UI.Palette.Color {
-            r: tg_ir.fb_read_byte(offset + 2),
-            g: tg_ir.fb_read_byte(offset + 1),
-            b: tg_ir.fb_read_byte(offset)
+            r: (cur_packed / 65536) % 256,
+            g: (cur_packed / 256) % 256,
+            b: cur_packed % 256
         };
         let mixed = UI.Palette.blend(cur, tint);
-        volatile write(offset,     mixed.b);
-        volatile write(offset + 1, mixed.g);
-        volatile write(offset + 2, mixed.r);
+        let new_packed = mixed.r * 65536 + mixed.g * 256 + mixed.b;
+        atomic store(offset, new_packed);
     }
 }

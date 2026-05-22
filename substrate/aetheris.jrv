@@ -182,30 +182,55 @@ complexity O(N)
     }
 
     func paint_thought_core(frame_n: i32) {
-        // Halo via additive blend (saturating). Sphere border in NEON_CYAN.
-        // Dashed orbit between r=96 and r=106. Pulsing inner orb whose radius
-        // oscillates between 72 and 95 with period 24 frames.
-        let halo_r = 0;
-        while halo_r < 192 {
-            HAL.Framebuffer.add_blend(400 + halo_r, 280, UI.Palette.HALO_TINT);
-            halo_r = halo_r + 1;
+        // Halo: radial additive disc around (400,280) up to r=192. A
+        // saturating add per-pixel keeps the falloff tinted but never
+        // overflows into adjacent channels.
+        let dy = 0 - 192;
+        while dy <= 192 {
+            let dx = 0 - 192;
+            while dx <= 192 {
+                if dx * dx + dy * dy <= 36864 {
+                    HAL.Framebuffer.add_blend(400 + dx, 280 + dy, UI.Palette.HALO_TINT);
+                }
+                dx = dx + 1;
+            }
+            dy = dy + 1;
         }
+
         HAL.Framebuffer.circle(400, 280, 128, UI.Palette.GLASS);
         HAL.Framebuffer.ring(400, 280, 128, 120, UI.Palette.NEON_CYAN);
 
-        let dash = 0;
-        while dash < 32 {
-            HAL.Framebuffer.ring(400, 280, 106, 96, UI.Palette.NEON_CYAN);
-            dash = dash + 1;
+        // Dashed orbit between r=96 and r=106: 16 dashes / 16 gaps over
+        // 32 angular segments. Only even segments are painted. tg_ir
+        // supplies the angular-segment index for each (dx,dy) sample.
+        let oy = 0 - 106;
+        while oy <= 106 {
+            let ox = 0 - 106;
+            while ox <= 106 {
+                let dist = ox * ox + oy * oy;
+                if dist <= 11236 {
+                    if dist >= 9216 {
+                        let seg = tg_ir.angle_segment(ox, oy, 32);
+                        if seg % 2 == 0 {
+                            HAL.Framebuffer.pixel(400 + ox, 280 + oy, UI.Palette.NEON_CYAN);
+                        }
+                    }
+                }
+                ox = ox + 1;
+            }
+            oy = oy + 1;
         }
 
+        // Pulsing inner orb: r sweeps 72→95→72 across 24 frames. Both legs
+        // are linear interpolations of length 12; the value at phase=12
+        // matches the endpoint of the rising leg, so no discontinuity.
         let phase = frame_n % 24;
         let orb_r = 72;
-        if phase > 12 {
-            orb_r = 95 - (phase - 12);
-        }
         if phase <= 12 {
-            orb_r = 72 + phase;
+            orb_r = 72 + (phase * 23) / 12;
+        }
+        if phase > 12 {
+            orb_r = 95 - ((phase - 12) * 23) / 12;
         }
         HAL.Framebuffer.circle(400, 280, orb_r, UI.Palette.ORB_HOT);
     }

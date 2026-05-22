@@ -90,7 +90,10 @@ complexity O(1)
 
     func tick_frame() {
         // Called by Kernel.Scheduler.on_frame to advance the animation
-        // phase. Volatile because the value crosses the asm/.jrv boundary.
-        volatile write(0x8000, 1);
+        // phase. The increment targets the frame_count field at offset 28
+        // (magic:4 + VbeInfo:24); writing 0x8000 itself would clobber the
+        // magic word and the kernel would refuse subsequent reads.
+        let h = get();
+        volatile write(0x8000 + 28, h.frame_count + 1);
     }
 }

@@ -70,17 +70,22 @@ complexity O(1)
 
     func on_frame(handler: Stream) {
         // Registers `handler` as the per-frame callback. The driver is
-        // selected by capability detection: APIC > HPET > VBE poll.
+        // selected by capability detection: APIC > HPET > VBE poll. The
+        // handler's resolved address MUST land in ACTIVE_CB.handler_ptr at
+        // 0x9200 — without it the dispatch loop has nothing to invoke.
         let driver = select_driver();
         volatile write(0x9100, driver.kind);
-        // Reset the live callback slot. Cancels any prior registration.
-        volatile write(0x9200, 0);
+        let handler_addr = tg_ir.callback_address(handler);
+        volatile write(0x9200, handler_addr);
+        volatile write(0x9208, 0);
     }
 
     func cancel() {
-        // Marks the active callback as cancelled. The next retrace observes
-        // the flag and skips dispatch entirely.
-        volatile write(0x9200, 1);
+        // Marks the active callback as cancelled. handler_ptr (0x9200) is
+        // cleared so the dispatcher never jumps to a stale address; the
+        // cancelled flag lives at offset +8 (0x9208) per FrameCallback.
+        volatile write(0x9200, 0);
+        volatile write(0x9208, 1);
     }
 
     func dispatch_once(frame_n: i32) {

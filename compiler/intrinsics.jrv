@@ -59,14 +59,20 @@ complexity O(1)
     }
 
     func install_interrupt(vector: i32, handler_addr: i32) {
-        // Direct lowering: writes a 16-byte IDT descriptor at IDT_BASE +
-        // (vector * 16). The handler runs in ring 0 by default.
-        volatile write(vector, handler_addr);
+        // Writes a 16-byte IDT descriptor at IDT_BASE + (vector * 16). Each
+        // 64-bit descriptor occupies 16 bytes; the handler runs in ring 0 by
+        // default. Writing to the bare `vector` would corrupt low memory.
+        let IDT_BASE = 0x90000;
+        let slot = IDT_BASE + vector * 16;
+        volatile write(slot, handler_addr);
     }
 
     func port_read_intrinsic(port: i32) -> i32 {
-        // Lowers to: `in al, dx`. Compiler emits 0xEC.
-        let value = 0;
+        // Lowers to: `in al, dx`. Compiler emits 0xEC. The actual read is
+        // modelled by TG-IR so the roundtrip proof observes the same byte
+        // that was previously written to the port (otherwise the verifier
+        // sees a stub returning 0 and the proof becomes a lie).
+        let value = tg_ir.port_in(port);
         return value;
     }
 
