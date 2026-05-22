@@ -37,7 +37,7 @@ impl OmegaVerifier {
 
     /// Formal Proof Pass: Verified AST -> Proof Evidence.
     /// Time: O(N) where N is the number of AST nodes.
-    pub fn verify(&self, node: &Node) -> Result<(), String> {
+    pub fn verify<'a>(&self, node: &Node<'a>) -> Result<(), String> {
         match node {
             Node::Module { body, .. } => {
                 for child in body {
@@ -49,14 +49,46 @@ impl OmegaVerifier {
                     self.prove_pdd_and_efdd(func, complexity)?;
                 }
             }
+            Node::Struct { name, fields } => {
+                self.prove_struct_layout(name, fields)?;
+            }
+            Node::Import { path: _ } => {
+                // PDD: Resolution is O(log M) where M is module count.
+                // Log import (simulated)
+                // println!("IMPORT RESOLVED: {}", path);
+            }
+            Node::Static { name: _, address: _, size: _ } => {
+                // PDD: Address resolution is O(1).
+                // println!("STATIC MEMORY MAPPED: {} at 0x{:X} ({} bytes)", name, address, size);
+            }
             _ => {}
         }
         Ok(())
     }
 
+    fn prove_struct_layout<'a>(&self, _name: &str, fields: &Vec<(&str, crate::ast::Type<'a>)>) -> Result<(), String> {
+        // PDD: Memory layout analysis must be O(F) where F is number of fields.
+        let mut total_size = 0;
+        for (_fname, fty) in fields {
+            let size = match fty {
+                crate::ast::Type::I32 | crate::ast::Type::F32 => 4,
+                _ => 8, // Pointers/Streams
+            };
+            // Mandatory Alignment: 4-byte boundaries
+            if total_size % 4 != 0 {
+                total_size += 4 - (total_size % 4);
+            }
+            total_size += size;
+        }
+        
+        // Log layout proof (simulated)
+        // println!("LAYOUT PROOF for struct '{}': Size={} bytes, Fields={}", name, total_size, fields.len());
+        Ok(())
+    }
+
     /// PDD & EFDD Proof: Validates asymptotic bounds and energy limits.
     /// eTDD: Validates mandatory existence of verify blocks.
-    fn prove_pdd_and_efdd(&self, node: &Node, expected_complexity: &str) -> Result<(), String> {
+    fn prove_pdd_and_efdd<'a>(&self, node: &Node<'a>, expected_complexity: &str) -> Result<(), String> {
         match node {
             Node::Function { body, name, verification, .. } => {
                 // 0. eTDD Proof: Mandatory verify block
@@ -85,6 +117,9 @@ impl OmegaVerifier {
                 
                 // 2. EFDD Proof
                 self.prove_efdd_bounds(body, name)?;
+            }
+            Node::Struct { name, fields } => {
+                self.prove_struct_layout(name, fields)?;
             }
             Node::Render { name, verification, .. } => {
                 if verification.is_none() {
@@ -129,11 +164,49 @@ impl OmegaVerifier {
                     let d = 1 + self.analyze_loop_nesting(inner);
                     if d > max { max = d; }
                 }
+                Stmt::For { body: inner, .. } => {
+                    let d = 1 + self.analyze_loop_nesting(inner);
+                    if d > max { max = d; }
+                }
                 Stmt::If { then_branch, else_branch, .. } => {
                     let d1 = self.analyze_loop_nesting(then_branch);
                     let d2 = else_branch.as_ref().map(|b| self.analyze_loop_nesting(b)).unwrap_or(0);
                     if d1 > max { max = d1; }
                     if d2 > max { max = d2; }
+                }
+                Stmt::Evolve { body } => {
+                    let d = self.analyze_loop_nesting(body);
+                    if d > max { max = d; }
+                }
+                Stmt::Budget { body, .. } => {
+                    let d = self.analyze_loop_nesting(body);
+                    if d > max { max = d; }
+                }
+                Stmt::Prob { branches } => {
+                    for (_w, b) in branches {
+                        let d = self.analyze_loop_nesting(b);
+                        if d > max { max = d; }
+                    }
+                }
+                Stmt::Sync { body, .. } => {
+                    let d = self.analyze_loop_nesting(body);
+                    if d > max { max = d; }
+                }
+                Stmt::Event { body, .. } => {
+                    let d = self.analyze_loop_nesting(body);
+                    if d > max { max = d; }
+                }
+                Stmt::Hologram { body, .. } => {
+                    let d = self.analyze_loop_nesting(body);
+                    if d > max { max = d; }
+                }
+                Stmt::PostProcess { body, .. } => {
+                    let d = self.analyze_loop_nesting(body);
+                    if d > max { max = d; }
+                }
+                Stmt::NeuroAdapt { body, .. } => {
+                    let d = self.analyze_loop_nesting(body);
+                    if d > max { max = d; }
                 }
                 _ => {}
             }
@@ -141,7 +214,7 @@ impl OmegaVerifier {
         max
     }
 
-    fn estimate_stmt_cost(&self, stmt: &Stmt) -> f32 {
+    pub(crate) fn estimate_stmt_cost(&self, stmt: &Stmt) -> f32 {
         match stmt {
             Stmt::Expression { expr } => self.estimate_expr_cost(expr),
             Stmt::Let { value, .. } => 0.1 + self.estimate_expr_cost(value),
@@ -150,10 +223,29 @@ impl OmegaVerifier {
                 let c2 = else_branch.as_ref().map(|b| b.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>()).unwrap_or(0.0);
                 c1.max(c2) // Worst-case path for formal proof
             }
-            Stmt::While { body, .. } => {
+            Stmt::While { body, .. } | Stmt::For { body, .. } => {
                 // EFDD requires bounded loops for proof
                 body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() * 100.0 // Proof bound: 100 iterations
             }
+            Stmt::Prob { branches } => {
+                branches.iter().map(|(w, b)| w * b.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>()).sum()
+            }
+            Stmt::Sync { body, .. } => {
+                body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 2000.0
+            }
+            Stmt::Gossip { .. } => 150.0,
+            Stmt::Publish { .. } => 150.0,
+            Stmt::Contract { .. } => 0.05,
+            Stmt::Knowledge { .. } => 500.0,
+            Stmt::Memory { .. } => 0.2,
+            Stmt::Evolve { body } => {
+                body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 1000.0
+            }
+            Stmt::Window { .. } => 50000.0,
+            Stmt::Event { body, .. } => {
+                body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 100.0
+            }
+            Stmt::Assert { condition } => self.estimate_expr_cost(condition) + 0.05,
             Stmt::Layout { content, .. } => {
                 content.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 500.0
             }
@@ -169,8 +261,22 @@ impl OmegaVerifier {
             Stmt::Asm { .. } => 0.05,
             Stmt::VolatileWrite { .. } => 0.1,
             Stmt::VolatileRead { .. } => 0.1,
+            Stmt::PortWrite { .. } => 0.1,
+            Stmt::PortRead { .. } => 0.1,
             Stmt::AtomicOp { .. } => 0.2,
-            _ => 0.05,
+            Stmt::Hologram { depth, body, .. } => {
+                self.estimate_expr_cost(depth) + body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 1010.0
+            }
+            Stmt::PostProcess { intensity, body, .. } => {
+                self.estimate_expr_cost(intensity) + body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 8000.0
+            }
+            Stmt::NeuroAdapt { load, body, .. } => {
+                self.estimate_expr_cost(load) + body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>() + 50.0
+            }
+            Stmt::Budget { body, .. } => {
+                body.iter().map(|s| self.estimate_stmt_cost(s)).sum::<f32>()
+            }
+            Stmt::Return { value } => value.as_ref().map(|v| self.estimate_expr_cost(v)).unwrap_or(0.01),
         }
     }
 

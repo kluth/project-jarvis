@@ -34,8 +34,14 @@ fn main() {
                     let mut backend = AotBackend::new();
                     match backend.lower_to_elf(&ast) {
                         Ok(elf) => {
-                            fs::write("output.elf", &elf.code_section).expect("Failed to write ELF");
-                            println!("AOT Production ELF Generated ({} bytes) -> output.elf", elf.code_section.len());
+                            let mut binary = Vec::new();
+                            binary.extend_from_slice(&elf.elf_header);
+                            binary.extend_from_slice(&elf.multiboot_header);
+                            binary.extend_from_slice(&elf.code_section);
+                            binary.extend_from_slice(&elf.metadata_section);
+
+                            fs::write("output.elf", &binary).expect("Failed to write ELF");
+                            println!("AOT Production ELF Generated ({} bytes) -> output.elf", binary.len());
                         }
                         Err(e) => println!("Backend Error: {}", e),
                     }

@@ -1,7 +1,9 @@
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Token<'a> {
     Module,
+    Import,
     Complexity,
+    Struct,
     Func,
     Verify,
     Test,
@@ -12,6 +14,7 @@ pub enum Token<'a> {
     For,
     While,
     Memory,
+    Static,
     Evolve,
     Neural,
     Budget,
@@ -27,6 +30,7 @@ pub enum Token<'a> {
     Assert,
     Asm,
     Volatile,
+    Port,
     Atomic,
     NoMangle,
     Section,
@@ -75,6 +79,7 @@ pub enum Token<'a> {
     OpenBracket,
     CloseBracket,
     Arrow,
+    FatArrow,
     Eof,
     Unknown,
 }
@@ -132,6 +137,9 @@ impl<'a> Lexer<'a> {
                 if self.peek() == Some('=') {
                     self.consume();
                     Token::Equals
+                } else if self.peek() == Some('>') {
+                    self.consume();
+                    Token::FatArrow
                 } else {
                     Token::Assign
                 }
@@ -221,7 +229,9 @@ impl<'a> Lexer<'a> {
 
         match text {
             "module" => Token::Module,
+            "import" => Token::Import,
             "complexity" => Token::Complexity,
+            "struct" => Token::Struct,
             "func" => Token::Func,
             "verify" => Token::Verify,
             "test" => Token::Test,
@@ -232,6 +242,7 @@ impl<'a> Lexer<'a> {
             "for" => Token::For,
             "while" => Token::While,
             "memory" => Token::Memory,
+            "static" => Token::Static,
             "evolve" => Token::Evolve,
             "neural" => Token::Neural,
             "budget" => Token::Budget,
@@ -246,6 +257,7 @@ impl<'a> Lexer<'a> {
             "reflect" => Token::Reflect,
             "asm" => Token::Asm,
             "volatile" => Token::Volatile,
+            "port" => Token::Port,
             "atomic" => Token::Atomic,
             "no_mangle" => Token::NoMangle,
             "section" => Token::Section,
