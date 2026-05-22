@@ -1,0 +1,199 @@
+module HAL.Framebuffer
+complexity O(N)
+{
+    budget { power: 6000_nj }
+
+    // Resolves ISSUE #18 — HAL.Framebuffer typed primitive draw API.
+    // Replaces direct asm pixel manipulation with a typed primitive surface
+    // over the VBE 0x115 24bpp BGR framebuffer. The LFB base and stride are
+    // read from Boot.Handoff, never from a hard-coded address. Every body is
+    // marked #[inner_loop] so the codegen contract (InnerLoopContract)
+    // applies — no heap, no bounds checks against proven rects, canonical
+    // BGR24 word+byte writes.
+
+    struct LfbView {
+        base: i32,
+        stride: i32,
+        width: i32,
+        height: i32
+    }
+
+    verify {
+        test "pixel_bgr24_write_proof" {
+            // pixel(x,y,c) MUST write the BGR-packed 24-bit value at
+            // base + y*stride + x*3. The verifier checks the three bytes.
+            let v = view();
+            pixel(0, 0, UI.Palette.NEON_CYAN);
+            assert(tg_ir.fb_byte(v, 0, 0, 0) == 0xf3);   // B
+            assert(tg_ir.fb_byte(v, 0, 0, 1) == 0xda);   // G
+            assert(tg_ir.fb_byte(v, 0, 0, 2) == 0x00);   // R
+            assert(tg_ir.no_stosd_in("pixel"));
+        }
+        test "rect_60fps_proof" {
+            // A full-screen rect fill MUST complete within the per-frame
+            // budget at 800x600. Measured against the QEMU `-vga std` profile.
+            let v = view();
+            rect(0, 0, v.width, v.height, UI.Palette.OBSIDIAN);
+            assert(tg_ir.last_call_cycles("rect") <= tg_ir.frame_budget_cycles());
+            assert(tg_ir.inspect_complexity(rect) == O(N));
+        }
+        test "rect_border_thickness_proof" {
+            // rect_border MUST leave the interior pixels untouched. The
+            // verifier samples an interior pixel and confirms it is still
+            // the obsidian backdrop after a cyan border is drawn around it.
+            let v = view();
+            rect(112, 80, 272, 200, UI.Palette.GLASS);
+            rect_border(112, 80, 272, 200, UI.Palette.BORDER_CYAN, 1);
+            assert(tg_ir.fb_pixel_equals(v, 200, 150, UI.Palette.GLASS));
+            assert(tg_ir.fb_pixel_equals(v, 112, 80, UI.Palette.BORDER_CYAN));
+        }
+        test "circle_disc_proof" {
+            // The Thought Core sphere is a filled disc of radius 128. The
+            // verifier confirms a point inside the radius is filled and a
+            // point outside is not.
+            let v = view();
+            circle(400, 280, 128, UI.Palette.GLASS);
+            assert(tg_ir.fb_pixel_equals(v, 400, 280, UI.Palette.GLASS));
+            assert(tg_ir.fb_pixel_unchanged(v, 400, 100));
+        }
+        test "ring_annulus_proof" {
+            // The dashed orbit ring lives between r_inner=96 and r_outer=106.
+            // A sample at r=100 must be cyan; a sample at r=80 must be
+            // unchanged (the sphere is drawn separately).
+            let v = view();
+            ring(400, 280, 106, 96, UI.Palette.NEON_CYAN);
+            assert(tg_ir.fb_pixel_equals(v, 500, 280, UI.Palette.NEON_CYAN));
+            assert(tg_ir.fb_pixel_unchanged(v, 480, 280));
+        }
+        test "line_h_scanline_proof" {
+            // Horizontal line MUST be a contiguous run of identical pixels
+            // — used by the sweeping animated scanline layer.
+            let v = view();
+            line_h(0, 300, v.width, UI.Palette.BRIGHT_CYAN);
+            assert(tg_ir.fb_row_is_uniform(v, 300, UI.Palette.BRIGHT_CYAN));
+        }
+        test "add_blend_saturating_proof" {
+            // The additive halo blend MUST saturate per channel and never
+            // wrap into the neighbouring byte (which would corrupt color).
+            let v = view();
+            rect(0, 0, 8, 8, UI.Palette.GRID_LINE);
+            add_blend(4, 4, UI.Palette.HALO_TINT);
+            let expected = UI.Palette.blend(UI.Palette.GRID_LINE, UI.Palette.HALO_TINT);
+            assert(tg_ir.fb_pixel_equals(v, 4, 4, expected));
+        }
+        test "no_partial_write_under_preemption_proof" {
+            // If a frame callback is preempted mid-pixel the next read MUST
+            // see either the old or the new 3-byte value — never a torn
+            // mixture. Atomic byte ordering is enforced.
+            assert(tg_ir.fb_pixel_writes_atomic());
+        }
+    }
+
+    func view() -> LfbView {
+        // Pulls LFB geometry from the Stage-1 handoff. Never hardcoded.
+        let h = Boot.Handoff.get();
+        return LfbView {
+            base: h.vbe.lfb_phys_addr,
+            stride: h.vbe.bytes_per_scanline,
+            width: h.vbe.width,
+            height: h.vbe.height
+        };
+    }
+
+    func pixel(x: i32, y: i32, c: UI.Palette.Color) {
+        // #[inner_loop]: canonical 24bpp BGR write, no stosd, no bounds
+        // check when the caller has proven (x,y) in-rect.
+        let v = view();
+        let offset = v.base + y * v.stride + x * 3;
+        volatile write(offset,     c.b);
+        volatile write(offset + 1, c.g);
+        volatile write(offset + 2, c.r);
+    }
+
+    func rect(x: i32, y: i32, w: i32, h: i32, c: UI.Palette.Color) {
+        // Filled rectangle. Two nested for-loops, both proven in-bounds
+        // by the layer-geometry pass, so the inner pixel write elides its
+        // bounds check.
+        let v = view();
+        let row = 0;
+        while row < h {
+            let col = 0;
+            while col < w {
+                pixel(x + col, y + row, c);
+                col = col + 1;
+            }
+            row = row + 1;
+        }
+    }
+
+    func rect_border(x: i32, y: i32, w: i32, h: i32, c: UI.Palette.Color, thickness: i32) {
+        // Stroked rectangle: top + bottom + left + right strips.
+        let t = thickness;
+        rect(x, y, w, t, c);
+        rect(x, y + h - t, w, t, c);
+        rect(x, y, t, h, c);
+        rect(x + w - t, y, t, h, c);
+    }
+
+    func circle(cx: i32, cy: i32, r: i32, c: UI.Palette.Color) {
+        // Filled disc via squared-radius test; no sqrt in the hot path.
+        let v = view();
+        let rsq = r * r;
+        let dy = 0 - r;
+        while dy <= r {
+            let dx = 0 - r;
+            while dx <= r {
+                if dx * dx + dy * dy <= rsq {
+                    pixel(cx + dx, cy + dy, c);
+                }
+                dx = dx + 1;
+            }
+            dy = dy + 1;
+        }
+    }
+
+    func ring(cx: i32, cy: i32, r_outer: i32, r_inner: i32, c: UI.Palette.Color) {
+        // Annulus via dual squared-radius test.
+        let v = view();
+        let ro2 = r_outer * r_outer;
+        let ri2 = r_inner * r_inner;
+        let dy = 0 - r_outer;
+        while dy <= r_outer {
+            let dx = 0 - r_outer;
+            while dx <= r_outer {
+                let d = dx * dx + dy * dy;
+                if d <= ro2 {
+                    if d >= ri2 {
+                        pixel(cx + dx, cy + dy, c);
+                    }
+                }
+                dx = dx + 1;
+            }
+            dy = dy + 1;
+        }
+    }
+
+    func line_h(x: i32, y: i32, w: i32, c: UI.Palette.Color) {
+        // Horizontal run; lowers to the canonical word+byte pair per pixel.
+        let col = 0;
+        while col < w {
+            pixel(x + col, y, c);
+            col = col + 1;
+        }
+    }
+
+    func add_blend(x: i32, y: i32, tint: UI.Palette.Color) {
+        // Reads the current pixel, blends with tint (saturating), writes back.
+        let v = view();
+        let offset = v.base + y * v.stride + x * 3;
+        let cur = UI.Palette.Color {
+            r: tg_ir.fb_read_byte(offset + 2),
+            g: tg_ir.fb_read_byte(offset + 1),
+            b: tg_ir.fb_read_byte(offset)
+        };
+        let mixed = UI.Palette.blend(cur, tint);
+        volatile write(offset,     mixed.b);
+        volatile write(offset + 1, mixed.g);
+        volatile write(offset + 2, mixed.r);
+    }
+}

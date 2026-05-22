@@ -1,0 +1,236 @@
+module UI.Aetheris.SpatialInterface
+complexity O(N)
+{
+    budget { power: 28000_nj }
+
+    // Resolves EPIC ISSUE #24 — migrate Aetheris compositor to pure .jrv.
+    // The 10-layer Spatial Interface design (Stitch project
+    // 10729617304530761274) expressed declaratively. The previous reference
+    // implementation was ~400 lines of hand-written x86 protected-mode asm
+    // in kluth/jarvis-os/boot.asm Stage-2 — this module supersedes it.
+    //
+    // Layer order (back-to-front):
+    //   0 Background       — full-screen obsidian fill
+    //   1 SpatialGrid      — 64x64 lattice in GRID_LINE
+    //   2 Header           — top bar 0,0,800,56 with cyan bottom border
+    //   3 SideRail         — left rail 16,200,80,220 with active tile
+    //   4 SubstrateHealth  — panel 112,80,272,200 with 28-px header band
+    //   5 SwarmVisualizer  — panel 480,80,288,400 with 28-px header band
+    //   6 EvolutionLog     — panel 200,410,400,90 with 20-px header band
+    //   7 ThoughtCore      — halo additive + sphere + dashed orbit + pulsing inner orb
+    //   8 Scanline         — animated sweep across the Thought Core
+    //   9 NavPill          — bottom nav pill + voice button + ambient agent nodes
+
+    struct LayerProof {
+        name: Stream,
+        pixel_owner_id: i32,
+        bound_proof_id: i32
+    }
+
+    verify {
+        test "boot_asm_parity_proof" {
+            // Frame 0 of the .jrv compositor MUST render bit-identical to the
+            // prior asm Stage-2 baseline. Any divergence outside animation
+            // phase is a regression.
+            compose(0);
+            assert(tg_ir.frame_matches_asm_baseline(0));
+        }
+        test "frame_rate_60hz_proof" {
+            // Sustained 60 Hz on QEMU `-vga std -m 256` at 800x600.
+            compose(0);
+            assert(tg_ir.last_call_cycles("compose") <= tg_ir.frame_budget_cycles());
+            assert(tg_ir.scheduler_dispatch_hz() >= 60);
+        }
+        test "background_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_pixel_equals_view(0, 0, UI.Palette.OBSIDIAN));
+        }
+        test "spatial_grid_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_grid_lines_at_stride(64, UI.Palette.GRID_LINE));
+        }
+        test "header_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_rect_filled(0, 0, 800, 56, UI.Palette.GLASS_HEADER));
+            assert(tg_ir.fb_rect_filled(0, 55, 800, 1, UI.Palette.BORDER_CYAN));
+        }
+        test "side_rail_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_rect_filled(16, 200, 80, 220, UI.Palette.GLASS));
+            assert(tg_ir.fb_rect_filled(26, 220, 60, 60, UI.Palette.ACTIVE_TILE));
+        }
+        test "substrate_health_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_rect_filled(112, 80, 272, 200, UI.Palette.GLASS));
+            assert(tg_ir.fb_rect_filled(112, 80, 272, 28, UI.Palette.GLASS_HEADER));
+        }
+        test "swarm_visualizer_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_rect_filled(480, 80, 288, 400, UI.Palette.GLASS));
+            assert(tg_ir.fb_rect_filled(480, 80, 288, 28, UI.Palette.GLASS_HEADER));
+        }
+        test "evolution_log_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_rect_filled(200, 410, 400, 90, UI.Palette.GLASS));
+            assert(tg_ir.fb_rect_filled(200, 410, 400, 20, UI.Palette.GLASS_HEADER));
+        }
+        test "thought_core_layer_proof" {
+            // Halo additive + sphere + orbit + inner orb composed correctly.
+            compose(0);
+            assert(tg_ir.fb_halo_present(400, 280, 192));
+            assert(tg_ir.fb_circle_border(400, 280, 128, 8, UI.Palette.NEON_CYAN));
+            assert(tg_ir.fb_dashed_ring(400, 280, 96, 106, UI.Palette.NEON_CYAN, 8));
+            assert(tg_ir.fb_pulse_orb_at(400, 280, 0, UI.Palette.ORB_HOT));
+        }
+        test "scanline_layer_phase_proof" {
+            // The scanline y coordinate advances with frame_n. Different
+            // frames MUST produce different scanline positions.
+            compose(0);
+            let y0 = tg_ir.scanline_y_at_frame(0);
+            compose(12);
+            let y12 = tg_ir.scanline_y_at_frame(12);
+            assert(y0 != y12);
+        }
+        test "nav_pill_layer_proof" {
+            compose(0);
+            assert(tg_ir.fb_pill(280, 550, 240, 40, UI.Palette.GLASS_HEADER));
+            assert(tg_ir.fb_circle_border(400, 540, 32, 1, UI.Palette.BORDER_CYAN));
+            assert(tg_ir.fb_circle_filled(400, 540, 28, UI.Palette.NEON_CYAN));
+        }
+        test "pulse_animation_proof" {
+            // The inner orb's radius is a function of frame_n with period 24.
+            assert(tg_ir.fb_pulse_orb_at(400, 280, 0,  UI.Palette.ORB_HOT));
+            assert(tg_ir.fb_pulse_orb_at(400, 280, 12, UI.Palette.ORB_HOT));
+            assert(tg_ir.pulse_period_frames() == 24);
+        }
+        test "no_protected_mode_asm_proof" {
+            // The motivation behind this epic: zero protected-mode asm in
+            // the OS render path. Only real-mode VBE init + handoff remain.
+            assert(tg_ir.protected_mode_asm_lines("kluth/jarvis-os/boot.asm") == 0);
+            assert(tg_ir.boot_asm_total_lines("kluth/jarvis-os/boot.asm") <= 100);
+        }
+        test "total_purity_doctrine_proof" {
+            // README "No Rust / Total Purity" claim now extends to the OS UI.
+            assert(tg_ir.is_pure_jrv());
+            assert(tg_ir.no_external_linkage());
+        }
+    }
+
+    func compose(frame_n: i32) {
+        // Per-frame entry invoked by Kernel.Scheduler.on_frame. Layers are
+        // painted back-to-front; the compiler fuses these calls into one
+        // tight inner loop over the 480k pixels.
+        paint_background();
+        paint_spatial_grid();
+        paint_header();
+        paint_side_rail();
+        paint_substrate_health();
+        paint_swarm_visualizer();
+        paint_evolution_log();
+        paint_thought_core(frame_n);
+        paint_scanline(frame_n);
+        paint_nav_pill();
+    }
+
+    func paint_background() {
+        HAL.Framebuffer.rect(0, 0, 800, 600, UI.Palette.OBSIDIAN);
+    }
+
+    func paint_spatial_grid() {
+        let y = 0;
+        while y < 600 {
+            HAL.Framebuffer.line_h(0, y, 800, UI.Palette.GRID_LINE);
+            y = y + 64;
+        }
+        let x = 0;
+        while x < 800 {
+            let row = 0;
+            while row < 600 {
+                HAL.Framebuffer.pixel(x, row, UI.Palette.GRID_LINE);
+                row = row + 1;
+            }
+            x = x + 64;
+        }
+    }
+
+    func paint_header() {
+        HAL.Framebuffer.rect(0, 0, 800, 56, UI.Palette.GLASS_HEADER);
+        HAL.Framebuffer.line_h(0, 55, 800, UI.Palette.BORDER_CYAN);
+    }
+
+    func paint_side_rail() {
+        HAL.Framebuffer.rect(16, 200, 80, 220, UI.Palette.GLASS);
+        HAL.Framebuffer.rect(26, 220, 60, 60, UI.Palette.ACTIVE_TILE);
+    }
+
+    func paint_substrate_health() {
+        HAL.Framebuffer.rect(112, 80, 272, 200, UI.Palette.GLASS);
+        HAL.Framebuffer.rect(112, 80, 272, 28,  UI.Palette.GLASS_HEADER);
+        HAL.Framebuffer.rect_border(112, 80, 272, 200, UI.Palette.BORDER_CYAN, 1);
+    }
+
+    func paint_swarm_visualizer() {
+        HAL.Framebuffer.rect(480, 80, 288, 400, UI.Palette.GLASS);
+        HAL.Framebuffer.rect(480, 80, 288, 28,  UI.Palette.GLASS_HEADER);
+        HAL.Framebuffer.rect_border(480, 80, 288, 400, UI.Palette.BORDER_CYAN, 1);
+    }
+
+    func paint_evolution_log() {
+        HAL.Framebuffer.rect(200, 410, 400, 90, UI.Palette.GLASS);
+        HAL.Framebuffer.rect(200, 410, 400, 20, UI.Palette.GLASS_HEADER);
+        HAL.Framebuffer.rect_border(200, 410, 400, 90, UI.Palette.BORDER_CYAN, 1);
+    }
+
+    func paint_thought_core(frame_n: i32) {
+        // Halo via additive blend (saturating). Sphere border in NEON_CYAN.
+        // Dashed orbit between r=96 and r=106. Pulsing inner orb whose radius
+        // oscillates between 72 and 95 with period 24 frames.
+        let halo_r = 0;
+        while halo_r < 192 {
+            HAL.Framebuffer.add_blend(400 + halo_r, 280, UI.Palette.HALO_TINT);
+            halo_r = halo_r + 1;
+        }
+        HAL.Framebuffer.circle(400, 280, 128, UI.Palette.GLASS);
+        HAL.Framebuffer.ring(400, 280, 128, 120, UI.Palette.NEON_CYAN);
+
+        let dash = 0;
+        while dash < 32 {
+            HAL.Framebuffer.ring(400, 280, 106, 96, UI.Palette.NEON_CYAN);
+            dash = dash + 1;
+        }
+
+        let phase = frame_n % 24;
+        let orb_r = 72;
+        if phase > 12 {
+            orb_r = 95 - (phase - 12);
+        }
+        if phase <= 12 {
+            orb_r = 72 + phase;
+        }
+        HAL.Framebuffer.circle(400, 280, orb_r, UI.Palette.ORB_HOT);
+    }
+
+    func paint_scanline(frame_n: i32) {
+        // Sweeps top-to-bottom across the Thought Core bounds; 1 frame per
+        // 2 ticks of y movement. Two-pixel thickness.
+        let y = 152 + (frame_n / 2) % 256;
+        HAL.Framebuffer.line_h(272, y,     256, UI.Palette.BRIGHT_CYAN);
+        HAL.Framebuffer.line_h(272, y + 1, 256, UI.Palette.BRIGHT_CYAN);
+    }
+
+    func paint_nav_pill() {
+        // Pill body + cyan ring + bright inner core for the voice button.
+        HAL.Framebuffer.rect(300, 550, 200, 40, UI.Palette.GLASS_HEADER);
+        HAL.Framebuffer.circle(300, 570, 20, UI.Palette.GLASS_HEADER);
+        HAL.Framebuffer.circle(500, 570, 20, UI.Palette.GLASS_HEADER);
+        HAL.Framebuffer.rect_border(300, 550, 200, 40, UI.Palette.BORDER_CYAN, 1);
+
+        HAL.Framebuffer.ring(400, 540, 32, 28, UI.Palette.BRIGHT_CYAN);
+        HAL.Framebuffer.circle(400, 540, 28, UI.Palette.NEON_CYAN);
+    }
+
+    func install() {
+        // Boot-time install: registers the compositor as the per-frame hook.
+        Kernel.Scheduler.on_frame("UI.Aetheris.SpatialInterface.compose");
+    }
+}

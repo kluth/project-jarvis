@@ -1,0 +1,65 @@
+module StaticInit
+complexity O(1)
+{
+    budget { power: 300_nj }
+
+    // Resolves ISSUE #15 — Static Memory Initialization Syntax.
+    // Extends the existing `memory` primitive so that a block may carry a
+    // compile-time initial value or fall back to a guaranteed zero pattern.
+    //
+    // Syntax (parsed by Parser, lowered here):
+    //   memory NAME: TYPE = INITIAL_VALUE          // typed init expression
+    //   memory NAME [SIZE]                         // zero-initialised block
+
+    struct InitDescriptor {
+        symbol: Stream,
+        size: i32,
+        kind: i32,          // 0 = zero-init, 1 = typed init
+        seed_ptr: Stream    // when kind=1, the compile-time constant blob
+    }
+
+    verify {
+        test "zero_init_guarantee_proof" {
+            // Any memory block without an initialiser MUST be zero on entry
+            // to user code. tg_ir.snapshot_bss verifies the .bss image is
+            // all-zeros after layout.
+            let d = describe("ScratchPad");
+            assert(d.kind == 0);
+            assert(tg_ir.snapshot_bss_all_zero(d.symbol, d.size));
+        }
+        test "typed_init_seed_proof" {
+            // For a typed initialiser the seed bytes MUST appear in .data at
+            // the symbol's relocation site, and the bit pattern must match
+            // what the constant expression evaluates to at compile time.
+            let d = describe("ArenaHead");
+            assert(d.kind == 1);
+            assert(tg_ir.data_section_bytes_match(d.symbol, d.seed_ptr));
+        }
+        test "no_runtime_initialiser_proof" {
+            // The lowering MUST NOT emit a runtime initialiser function. All
+            // initialisation is done by the loader from .data / .bss; the
+            // entry point sees memory already in its declared state.
+            assert(tg_ir.no_global_ctor_emitted());
+        }
+        test "alignment_preserved_proof" {
+            // Static initialisation must not weaken the RCU 64-byte alignment
+            // contract — a typed init for a struct stays 64-aligned.
+            let d = describe("ArenaHead");
+            assert(tg_ir.symbol_alignment(d.symbol) == 64);
+        }
+    }
+
+    func describe(symbol: Stream) -> InitDescriptor {
+        // Returns the descriptor the linker will use to populate this symbol.
+        let kind = tg_ir.init_kind(symbol);
+        let size = tg_ir.symbol_size(symbol);
+        let seed = tg_ir.init_seed_blob(symbol);
+
+        return InitDescriptor {
+            symbol: symbol,
+            size: size,
+            kind: kind,
+            seed_ptr: seed
+        };
+    }
+}
