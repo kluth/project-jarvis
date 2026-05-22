@@ -32,6 +32,10 @@ pub trait HardwareInterface {
     /// Triggers a hardware trap for formal contract violations.
     /// Time: O(1).
     fn trigger_trap(&self, code: u32) -> !;
+
+    /// Writes a single byte to the serial port for diagnostics.
+    /// Time: O(1).
+    fn write_serial(&self, byte: u8);
 }
 
 #[derive(Debug)]
