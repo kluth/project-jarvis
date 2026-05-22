@@ -3,15 +3,15 @@ complexity O(1)
 {
     verify {
         test "scifi_logic" {
-            assert(true);
+            assert(tg_ir.inspect_complexity(main) == O(1));
         }
         test "purity_proof" {
             // Cryptographically verify absence of external symbols
-            assert(1 == 1);
+            assert(tg_ir.no_external_linkage());
         }
         test "substrate_safety" {
             // Verify O(1) wait-free switching in pure .jrv
-            assert(true);
+            assert(tg_ir.is_wait_free_substrate());
         }
     }
 

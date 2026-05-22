@@ -21,7 +21,9 @@ complexity O(1)
 
     verify {
         test "ir_purity_proof" {
-            assert(true);
+            let ops = init_opcodes();
+            assert(ops.HALT == 0);
+            assert(tg_ir.bit_determinism_verified());
         }
     }
     func init_opcodes() -> Opcode {

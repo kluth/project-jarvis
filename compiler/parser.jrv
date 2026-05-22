@@ -31,6 +31,12 @@ complexity O(N)
         return ASTNode { type_id: 1, children: "ROOT" };
     }
 
+    func parse_statement(state: ParserState) -> ASTNode {
+        // Parse individual statements (let, return, if, etc.)
+        return ASTNode { type_id: 2, children: "STMT" };
+    }
+}
+
     verify {
         test "statement_proof" {
             assert(true);

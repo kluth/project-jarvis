@@ -29,11 +29,17 @@ complexity O(N)
 
     verify {
         test "fix_plan_proof" {
-            assert(true);
+            let plan = get_fix_plan("PDD_VIOLATION");
+            assert(tg_ir.is_valid_json_plan(plan));
         }
     }
     func get_fix_plan(violation: Stream) -> Stream {
         // Autonomous Fix Plan Generation (Rev 6.0)
+        let plan = "{ 'action': 'patch' }";
+        return plan;
+    }
+}
+lan Generation (Rev 6.0)
         let plan = "{ 'action': 'patch' }";
         return plan;
     }

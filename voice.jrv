@@ -5,11 +5,11 @@ complexity O(N)
     verify {
         test "voice_stream_processing" {
             let result = process_stream(100);
-            assert(result > 0);
+            assert(result == 20); // Strict State Verification
+            assert(tg_ir.loop_bound_verified(process_stream));
         }
         test "voice_purity_proof" {
-            // Assert semantic integrity within pure substrate
-            assert(true);
+            assert(tg_ir.is_machine_native());
         }
     }
 

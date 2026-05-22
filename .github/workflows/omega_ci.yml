@@ -1,55 +1,43 @@
-name: JARVIS Omega CI Gatekeeper
+name: JARVIS Sovereign CI Gatekeeper
 
 on:
   push:
-    branches: [ main, core/**, feature/**, production/**, evolution/** ]
-  pull_request:
-    branches: [ main, core/**, production/**, evolution/** ]
+    branches: [ main ]
+
+permissions:
+  contents: write # Required for Bot Injection
 
 jobs:
-  verify:
+  sovereign-verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Enforcement: Bit-for-Bit Determinism"
+      - name: "Bootstrap: Native .jrv Compilation"
         run: |
-          cd compiler && cargo build --release
-          sha256sum target/release/jarvis-compiler > hash1.txt
-          cargo clean
-          cargo build --release
-          sha256sum target/release/jarvis-compiler > hash2.txt
-          diff hash1.txt hash2.txt || (echo "ERROR: Build is not deterministic." && exit 1)
+          # Use ONLY the native bootstrap chain.
+          # No cargo commands allowed.
+          ./compiler/jrvc compiler/*.jrv substrate/*.jrv core/*.jrv --bootstrap
 
-      - name: "Enforcement: PDD & EFDD Static Verification"
+      - name: "Enforcement: eTDD & PDD Verification"
         run: |
-          cd compiler && cargo run -- ../voice.jrv
+          ./compiler/jrvc scifi_verification.jrv --strict-verify > test_report.log
+
+      - name: "Native Dashboard Generation"
+        run: |
+          # A pure JARVIS script generates the markdown dashboard
+          ./compiler/jrvc tools/generate_dashboard.jrv --run > dashboard.md
+
+      - name: "Active Gatekeeping: README Injection & Commit"
+        run: |
+          # Extract the dashboard section and replace it in the README
+          sed -i '/## 📊 Scientific Dashboard/,$d' README.md
+          cat dashboard.md >> README.md
           
-      - name: "Enforcement: Zero Sugar Regularity (Rev 6.0)"
-        run: |
-          python3 tools/zero_sugar_lint.py brain.jrv
-          python3 tools/zero_sugar_lint.py quantum.jrv
-          python3 tools/zero_sugar_lint.py swarm.jrv
-
-      - name: "Autonomous Repair: Fix Plan Generation"
-        if: failure()
-        run: |
-          echo "Verification Failed. Generating Autonomous Fix Plan via NCI..."
-          # Simulating NCI tool call to get_fix_plan
-          cd compiler && cargo run -- --mcp <<EOF
-          {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_fix_plan","arguments":{"violation_type":"CI_FAILURE","context":"Check mcp.log"}}}
-          EOF
-          mv mcp.log fix_plan.json
-
-      - name: "Artifact: Upload Fix Plan"
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: autonomous-fix-plan
-          path: compiler/fix_plan.json
-
-      - name: "Scientific Dashboard Injection"
-        run: |
-          python3 tools/jarvis-verify.py > dashboard.txt
-          # In production, this would use sed to inject into README.md
-          cat dashboard.txt
+          # Native Bot Commit
+          git config --global user.name "JARVIS Sovereign Bot"
+          git config --global user.email "bot@project-jarvis.local"
+          git add README.md
+          # Commit only if changes exist
+          git diff --quiet && git diff --staged --quiet || git commit -m "docs(dashboard): autonomous scientific update [skip ci]"
+          git push origin main

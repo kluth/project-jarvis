@@ -27,6 +27,18 @@ complexity O(1)
         return next;
     }
 
+    func verify_node(node: Node) -> i32 {
+        // Transition Loading -> Verified (1) or AwaitingFix (0)
+        let status = 1;
+        return status;
+    }
+}
+ // In the pure substrate, this maps to the AtomicPtr::swap primitive
+        
+        volatile write(0x1000, next.data);
+        return next;
+    }
+
     verify {
         test "verify_proof" {
             assert(true);

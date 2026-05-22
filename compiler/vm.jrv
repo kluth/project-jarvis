@@ -11,7 +11,8 @@ complexity O(N)
 
     verify {
         test "vm_purity_proof" {
-            assert(true);
+            assert(tg_ir.stack_bounds_verified());
+            assert(tg_ir.ip_overflow_protected());
         }
     }
     func execute(state: MachineState, bytecode: Stream) {

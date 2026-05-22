@@ -19,10 +19,12 @@ complexity O(1)
 
     verify {
         test "init_algorithms" {
-            assert(1 == 1);
+            initialize_algorithms();
+            assert(tg_ir.memory_allocated("LinearRegression") > 0);
+            assert(tg_ir.total_budget_used() <= 20000_nj);
         }
         test "brain_init_purity" {
-            assert(true);
+            assert(tg_ir.is_native_substrate());
         }
     }
     func initialize_algorithms() {
@@ -92,5 +94,8 @@ complexity O(1)
 }
 ithms
         knowledge GeneticAlgorithms: Vector[30]
+    }
+}
+knowledge GeneticAlgorithms: Vector[30]
     }
 }

@@ -15,7 +15,10 @@ complexity O(N)
 
     verify {
         test "token_proof" {
-            assert(true);
+            let state = LexerState { source: "let", cursor: 0 };
+            let token = next_token(state);
+            assert(token.type_id != -1); 
+            assert(tg_ir.no_implicit_iteration(next_token));
         }
     }
     func next_token(state: LexerState) -> Token {

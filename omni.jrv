@@ -5,7 +5,10 @@ complexity O(log N)
 
     verify {
         test "entropy_reduction_proof" {
-            assert(true);
+            let a = tg_ir.mock_stream_entropy(0.9);
+            let b = tg_ir.mock_stream_entropy(0.5);
+            let res = bridge_protocols(a, b);
+            assert(res.entropy < a.entropy); // Contract verification
         }
     }
     func bridge_protocols(a: Stream, b: Stream) -> Stream {

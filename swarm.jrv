@@ -5,11 +5,13 @@ complexity O(N log N)
 
     verify {
         test "consensus_proof" {
-            assert(true);
+            let nodes = tg_ir.mock_node_cluster(5);
+            coordinate(nodes);
+            assert(tg_ir.sync_protocol_active("raft"));
+            assert(tg_ir.inspect_complexity(coordinate) == O(N log N));
         }
         test "swarm_purity_proof" {
-            // Assert decentralized integrity within pure substrate
-            assert(true);
+            assert(tg_ir.no_external_linkage());
         }
     }
     func coordinate(nodes: Stream) -> Stream {

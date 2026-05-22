@@ -5,11 +5,13 @@ complexity O(2^N)
 
     verify {
         test "collapse_proof" {
-            assert(true);
+            let input = tg_ir.mock_stream(1);
+            let state = collapse_state(input);
+            assert(state.value == input.value || state.value == (input.value * -1.0));
+            assert(tg_ir.branch_probability_verified(collapse_state));
         }
         test "quantum_purity_proof" {
-            // Assert quantum integrity within pure substrate
-            assert(true);
+            assert(tg_ir.is_pure_jrv());
         }
     }
     func collapse_state(input: Stream) -> Stream {

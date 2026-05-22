@@ -26,6 +26,14 @@ complexity O(1)
         return current_ptr;
     }
 
+    func pin_block(ptr: Stream) {
+        // Prevent RCU reclamation during Fix Plan phase
+        volatile write(ptr, 1);
+    }
+}
+
+    }
+
     verify {
         test "pin_proof" {
             assert(true);
