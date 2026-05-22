@@ -53,15 +53,57 @@ impl<'a> McpServer<'a> {
     /// MCP Tool: query_ast(node_id)
     /// Retrieves the semantic context of a specific node.
     /// Time: O(N) where N is the number of nodes in the AST.
-    pub fn query_ast(&self, module: &Node) -> String {
-        format!("{:?}", module)
+    pub fn query_ast(&self, module: &Node, fn_name: &str) -> String {
+        match module {
+            Node::Module { body, .. } => {
+                for child in body {
+                    match child {
+                        Node::ComplexityBlock { content, .. } => {
+                            for item in content {
+                                if let Node::Function { name, .. } = item {
+                                    if *name == fn_name {
+                                        return format!("{:?}", item);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+        format!("Symbol '{}' not found in AST.", fn_name)
     }
 
     /// MCP Tool: analyze_energy(fn_name)
     /// Returns a detailed nanojoule breakdown.
-    /// Time: O(1) for retrieval.
-    pub fn analyze_energy(&self, _node: &Node) -> Result<f32, String> {
-        Ok(1250.5) 
+    /// Time: O(N).
+    pub fn analyze_energy(&self, module: &Node, fn_name: &str) -> Result<f32, String> {
+        match module {
+            Node::Module { body, .. } => {
+                for child in body {
+                    match child {
+                        Node::ComplexityBlock { content, .. } => {
+                            for item in content {
+                                if let Node::Function { name, body: func_body, .. } = item {
+                                    if *name == fn_name {
+                                        let mut total_cost = 0.0;
+                                        for stmt in func_body {
+                                            total_cost += self.verifier.estimate_stmt_cost(stmt);
+                                        }
+                                        return Ok(total_cost);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+        Err(format!("Function '{}' not found for energy analysis.", fn_name))
     }
 
     /// MCP Tool: run_mutants(module)
