@@ -1,11 +1,12 @@
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Type {
+pub enum Type<'a> {
     I32,
     F32,
     Stream,
     PixelStream,
     FrameBuffer,
     VectorCanvas,
+    Struct(&'a str),
     Unknown,
 }
 
@@ -41,7 +42,7 @@ pub enum Attribute<'a> {
 pub enum Stmt<'a> {
     Let {
         name: &'a str,
-        ty: Option<Type>,
+        ty: Option<Type<'a>>,
         value: Expr<'a>,
     },
     Return {
@@ -59,9 +60,14 @@ pub enum Stmt<'a> {
         condition: Expr<'a>,
         body: Vec<Stmt<'a>>,
     },
+    For {
+        var: &'a str,
+        iterable: Expr<'a>,
+        body: Vec<Stmt<'a>>,
+    },
     Memory {
         name: &'a str,
-        ty: Type,
+        ty: Type<'a>,
         size: usize,
     },
     Evolve {
@@ -135,6 +141,14 @@ pub enum Stmt<'a> {
         op: &'a str,
         args: Vec<Expr<'a>>,
     },
+    PortWrite {
+        port: Expr<'a>,
+        value: Expr<'a>,
+    },
+    PortRead {
+        port: Expr<'a>,
+        dest: &'a str,
+    },
     Hologram {
         kind: &'a str,
         depth: Expr<'a>,
@@ -157,14 +171,26 @@ pub enum Node<'a> {
         name: &'a str,
         body: Vec<Node<'a>>,
     },
+    Import {
+        path: &'a str,
+    },
+    Static {
+        name: &'a str,
+        address: usize,
+        size: usize,
+    },
     ComplexityBlock {
         complexity: &'a str,
         content: Vec<Node<'a>>,
     },
+    Struct {
+        name: &'a str,
+        fields: Vec<(&'a str, Type<'a>)>,
+    },
     Function {
         name: &'a str,
         params: Vec<&'a str>,
-        return_ty: Option<Type>,
+        return_ty: Option<Type<'a>>,
         body: Vec<Stmt<'a>>,
         verification: Option<Box<Node<'a>>>,
         attributes: Vec<Attribute<'a>>,

@@ -26,6 +26,19 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_module(&mut self) -> Result<Node<'a>, String> {
+        let mut body = Vec::new();
+
+        while self.current_token == Token::Import {
+            self.advance();
+            if let Token::StringLiteral(path) = self.current_token {
+                body.push(Node::Import { path });
+                self.advance();
+            } else if let Token::Identifier(path) = self.current_token {
+                body.push(Node::Import { path });
+                self.advance();
+            }
+        }
+
         self.expect(Token::Module)?;
         
         let name = if let Token::Identifier(id) = self.current_token {
@@ -35,10 +48,18 @@ impl<'a> Parser<'a> {
             return Err("Expected module name".to_string());
         };
 
-        let mut body = Vec::new();
-
         while self.current_token != Token::Eof {
             match self.current_token {
+                Token::Import => {
+                    self.advance();
+                    if let Token::StringLiteral(path) = self.current_token {
+                        body.push(Node::Import { path });
+                        self.advance();
+                    } else if let Token::Identifier(path) = self.current_token {
+                        body.push(Node::Import { path });
+                        self.advance();
+                    }
+                }
                 Token::Complexity => {
                     body.push(self.parse_complexity_block()?);
                 }
@@ -60,9 +81,12 @@ impl<'a> Parser<'a> {
                 Token::Interrupt => {
                     self.advance();
                     self.expect(Token::OpenParen)?;
-                    if let Token::Identifier(id) = self.current_token {
-                        attrs.push(crate::ast::Attribute::Interrupt(id));
-                        self.advance();
+                    match self.current_token {
+                        Token::Identifier(id) | Token::NumberLiteral(id) | Token::StringLiteral(id) => {
+                            attrs.push(crate::ast::Attribute::Interrupt(id));
+                            self.advance();
+                        }
+                        _ => return Err("Expected identifier, number, or string in @interrupt".to_string()),
                     }
                     self.expect(Token::CloseParen)?;
                 }
@@ -105,6 +129,12 @@ impl<'a> Parser<'a> {
                 Token::Verify => {
                     last_verify = Some(self.parse_verify_block()?);
                 }
+                Token::Struct => {
+                    content.push(self.parse_struct_definition()?);
+                }
+                Token::Static => {
+                    content.push(self.parse_static_block()?);
+                }
                 Token::At | Token::Func => {
                     let attrs = self.parse_attributes()?;
                     let mut func = self.parse_function(attrs)?;
@@ -138,6 +168,70 @@ impl<'a> Parser<'a> {
         
         self.expect(Token::CloseBrace)?;
         Ok(Node::ComplexityBlock { complexity, content })
+    }
+
+    fn parse_struct_definition(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::Struct)?;
+        let name = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else {
+            return Err("Expected struct name".to_string());
+        };
+
+        self.expect(Token::OpenBrace)?;
+        let mut fields = Vec::new();
+        while self.current_token != Token::CloseBrace && self.current_token != Token::Eof {
+            if let Token::Identifier(fname) = self.current_token {
+                self.advance();
+                self.expect(Token::Colon)?;
+                let fty = self.parse_type()?;
+                fields.push((fname, fty));
+                if self.current_token == Token::Comma {
+                    self.advance();
+                } else if self.current_token == Token::Semicolon {
+                    self.advance();
+                }
+            } else {
+                break;
+            }
+        }
+        self.expect(Token::CloseBrace)?;
+        Ok(Node::Struct { name, fields })
+    }
+
+    fn parse_static_block(&mut self) -> Result<Node<'a>, String> {
+        self.expect(Token::Static)?;
+        let name = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { "GLOBAL_STATE" };
+
+        self.expect(Token::OpenBracket)?;
+        let mut address = 0;
+        if let Token::NumberLiteral(n) = self.current_token {
+            address = if n.starts_with("0x") {
+                usize::from_str_radix(&n[2..], 16).unwrap_or(0)
+            } else {
+                n.parse().unwrap_or(0)
+            };
+            self.advance();
+        }
+        self.expect(Token::CloseBracket)?;
+
+        self.expect(Token::OpenBrace)?;
+        let mut size = 0;
+        if let Token::Identifier("size") = self.current_token {
+            self.advance();
+            self.expect(Token::Colon)?;
+            if let Token::NumberLiteral(n) = self.current_token {
+                size = n.parse().unwrap_or(0);
+                self.advance();
+            }
+        }
+        self.expect(Token::CloseBrace)?;
+
+        Ok(Node::Static { name, address, size })
     }
 
     fn parse_function(&mut self, attributes: Vec<crate::ast::Attribute<'a>>) -> Result<Node<'a>, String> {
@@ -179,7 +273,7 @@ impl<'a> Parser<'a> {
         Ok(Node::Function { name, params, return_ty, body, verification: None, attributes })
     }
 
-    fn parse_type(&mut self) -> Result<Type, String> {
+    fn parse_type(&mut self) -> Result<Type<'a>, String> {
         match self.current_token {
             Token::TypeI32 => { self.advance(); Ok(Type::I32) },
             Token::TypeF32 => { self.advance(); Ok(Type::F32) },
@@ -187,7 +281,7 @@ impl<'a> Parser<'a> {
             Token::TypePixelStream => { self.advance(); Ok(Type::PixelStream) },
             Token::TypeFrameBuffer => { self.advance(); Ok(Type::FrameBuffer) },
             Token::TypeVectorCanvas => { self.advance(); Ok(Type::VectorCanvas) },
-            Token::Identifier(_) => { self.advance(); Ok(Type::Unknown) },
+            Token::Identifier(id) => { self.advance(); Ok(Type::Struct(id)) },
             _ => Err("Expected Type".to_string())
         }
     }
@@ -206,6 +300,7 @@ impl<'a> Parser<'a> {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
             Token::While => self.parse_while_statement(),
+            Token::For => self.parse_for_statement(),
             Token::If => self.parse_if_statement(),
             Token::Memory => self.parse_memory_statement(),
             Token::Evolve => self.parse_evolve_block(),
@@ -227,6 +322,7 @@ impl<'a> Parser<'a> {
             Token::CaptureStream => self.parse_capture_stream_statement(),
             Token::Asm => self.parse_asm_block(),
             Token::Volatile => self.parse_volatile_op(),
+            Token::Port => self.parse_port_op(),
             Token::Atomic => self.parse_atomic_op(),
             Token::Hologram => self.parse_hologram_statement(),
             Token::PostProcess => self.parse_post_process_statement(),
@@ -360,6 +456,34 @@ impl<'a> Parser<'a> {
             Ok(Stmt::VolatileRead { address, dest })
         } else {
             Err("Expected 'read' or 'write' after volatile".to_string())
+        }
+    }
+
+    fn parse_port_op(&mut self) -> Result<Stmt<'a>, String> {
+        self.expect(Token::Port)?;
+        if let Token::Identifier("write") = self.current_token {
+            self.advance();
+            self.expect(Token::OpenParen)?;
+            let port = self.parse_expression()?;
+            self.expect(Token::Comma)?;
+            let value = self.parse_expression()?;
+            self.expect(Token::CloseParen)?;
+            if self.current_token == Token::Semicolon { self.advance(); }
+            Ok(Stmt::PortWrite { port, value })
+        } else if let Token::Identifier("read") = self.current_token {
+            self.advance();
+            self.expect(Token::OpenParen)?;
+            let port = self.parse_expression()?;
+            self.expect(Token::CloseParen)?;
+            self.expect(Token::Arrow)?;
+            let dest = if let Token::Identifier(id) = self.current_token {
+                self.advance();
+                id
+            } else { return Err("Expected destination identifier".to_string()); };
+            if self.current_token == Token::Semicolon { self.advance(); }
+            Ok(Stmt::PortRead { port, dest })
+        } else {
+            Err("Expected 'read' or 'write' after port".to_string())
         }
     }
 
@@ -499,10 +623,20 @@ impl<'a> Parser<'a> {
             if let Token::NumberLiteral(n) = self.current_token {
                 let weight = n.parse::<f32>().unwrap_or(0.0);
                 self.advance();
-                self.expect(Token::Arrow)?;
-                self.expect(Token::OpenBrace)?;
-                let branch_body = self.parse_block()?;
+                self.expect(Token::FatArrow)?;
+                
+                let branch_body = if self.current_token == Token::OpenBrace {
+                    self.advance();
+                    self.parse_block()?
+                } else {
+                    vec![self.parse_statement()?]
+                };
+                
                 branches.push((weight, branch_body));
+                
+                if self.current_token == Token::Comma {
+                    self.advance();
+                }
             } else {
                 break;
             }
@@ -623,6 +757,23 @@ impl<'a> Parser<'a> {
         self.expect(Token::OpenBrace)?;
         let body = self.parse_block()?;
         Ok(Stmt::While { condition, body })
+    }
+
+    fn parse_for_statement(&mut self) -> Result<Stmt<'a>, String> {
+        self.advance(); // for
+        let var = if let Token::Identifier(id) = self.current_token {
+            self.advance();
+            id
+        } else { return Err("Expected identifier in for loop".to_string()); };
+
+        if let Token::Identifier("in") = self.current_token {
+            self.advance();
+        } else { return Err("Expected 'in' in for loop".to_string()); }
+
+        let iterable = self.parse_expression()?;
+        self.expect(Token::OpenBrace)?;
+        let body = self.parse_block()?;
+        Ok(Stmt::For { var, iterable, body })
     }
 
     fn parse_if_statement(&mut self) -> Result<Stmt<'a>, String> {
