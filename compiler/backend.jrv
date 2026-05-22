@@ -16,9 +16,17 @@ complexity O(N)
 
     verify {
         test "lower_proof" {
-            assert(true);
+            let ast = tg_ir.mock_ast();
+            let elf = lower_to_elf(ast);
+            assert(tg_ir.is_valid_elf64(elf));
+            assert(tg_ir.inspect_complexity(lower_to_elf) == O(N));
+        }
+        test "multiboot_proof" {
+            let header = generate_multiboot_header();
+            assert(tg_ir.is_multiboot2_compliant(header));
         }
     }
+
     func lower_to_elf(ast: Stream) -> Stream {
         // Lowering logic: AST -> TG-IR -> ELF
         // Rule: Zero OS dependency; generate bare-metal headers
@@ -29,11 +37,6 @@ complexity O(N)
         return "ELF_BINARY_STUB";
     }
 
-    verify {
-        test "multiboot_proof" {
-            assert(true);
-        }
-    }
     func generate_multiboot_header() -> Stream {
         let magic = 0xE85250D6;
         return "MULTIBOOT_HEADER_STUB";

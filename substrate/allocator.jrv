@@ -14,9 +14,17 @@ complexity O(1)
 
     verify {
         test "align_proof" {
-            assert(true);
+            let ptr = alloc(128);
+            assert(ptr % 64 == 0); // Explicit 64-byte alignment check
+            assert(tg_ir.atomic_store_verified(0x2000000));
+        }
+        test "pin_proof" {
+            let ptr = 0x2000000;
+            pin_block(ptr);
+            assert(tg_ir.is_memory_pinned(ptr));
         }
     }
+
     func alloc(size: i32) -> Stream {
         // EFDD: 64-byte alignment enforcement
         let align = 64;
@@ -26,19 +34,6 @@ complexity O(1)
         return current_ptr;
     }
 
-    func pin_block(ptr: Stream) {
-        // Prevent RCU reclamation during Fix Plan phase
-        volatile write(ptr, 1);
-    }
-}
-
-    }
-
-    verify {
-        test "pin_proof" {
-            assert(true);
-        }
-    }
     func pin_block(ptr: Stream) {
         // Prevent RCU reclamation during Fix Plan phase
         volatile write(ptr, 1);

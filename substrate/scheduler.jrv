@@ -11,9 +11,15 @@ complexity O(1)
 
     verify {
         test "priority_proof" {
-            assert(true);
+            dispatch();
+            assert(tg_ir.scheduler_priority_level() > 0);
+        }
+        test "tick_proof" {
+            tick();
+            assert(tg_ir.is_deterministic_tick());
         }
     }
+
     func dispatch() {
         // Priority 1: Self-Healing (AwaitingFix)
         // Priority 2: Standard Processing
@@ -24,11 +30,6 @@ complexity O(1)
         }
     }
 
-    verify {
-        test "tick_proof" {
-            assert(true);
-        }
-    }
     func tick() {
         dispatch();
         // Evolutionary sync point

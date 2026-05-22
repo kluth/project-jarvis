@@ -15,9 +15,18 @@ complexity O(N)
 
     verify {
         test "module_proof" {
-            assert(true);
+            let state = ParserState { tokens: "EOF", cursor: 0 };
+            let ast = parse_module(state);
+            assert(ast.type_id == 1);
+            assert(tg_ir.recursion_depth_bounded(parse_module)); 
+        }
+        test "statement_proof" {
+            let state = ParserState { tokens: "EOF", cursor: 0 };
+            let ast = parse_statement(state);
+            assert(tg_ir.is_valid_ast_node(ast));
         }
     }
+
     func parse_module(state: ParserState) -> ASTNode {
         // Recursive descent parsing logic in pure JARVIS
         // Rule: No implicit recursion depth; use bounded stack if necessary
@@ -31,17 +40,6 @@ complexity O(N)
         return ASTNode { type_id: 1, children: "ROOT" };
     }
 
-    func parse_statement(state: ParserState) -> ASTNode {
-        // Parse individual statements (let, return, if, etc.)
-        return ASTNode { type_id: 2, children: "STMT" };
-    }
-}
-
-    verify {
-        test "statement_proof" {
-            assert(true);
-        }
-    }
     func parse_statement(state: ParserState) -> ASTNode {
         // Parse individual statements (let, return, if, etc.)
         return ASTNode { type_id: 2, children: "STMT" };

@@ -16,9 +16,17 @@ complexity O(1)
 
     verify {
         test "swap_proof" {
-            assert(true);
+            let n1 = Node { data: 0, fix_pending: 0, plan: FixPlan{violation:"none", patch_id:0} };
+            let n2 = Node { data: 1, fix_pending: 0, plan: FixPlan{violation:"none", patch_id:0} };
+            let res = swap(n1, n2);
+            assert(tg_ir.volatile_memory_read(0x1000) == n2.data);
+            assert(res.data == 1);
+        }
+        test "evolution_integrity" {
+            assert(tg_ir.is_wait_free_substrate());
         }
     }
+
     func swap(current: Node, next: Node) -> Node {
         // RCU/Atomic Swap Simulation in JARVIS
         // In the pure substrate, this maps to the AtomicPtr::swap primitive
@@ -27,23 +35,6 @@ complexity O(1)
         return next;
     }
 
-    func verify_node(node: Node) -> i32 {
-        // Transition Loading -> Verified (1) or AwaitingFix (0)
-        let status = 1;
-        return status;
-    }
-}
- // In the pure substrate, this maps to the AtomicPtr::swap primitive
-        
-        volatile write(0x1000, next.data);
-        return next;
-    }
-
-    verify {
-        test "verify_proof" {
-            assert(true);
-        }
-    }
     func verify_node(node: Node) -> i32 {
         // Transition Loading -> Verified (1) or AwaitingFix (0)
         let status = 1;

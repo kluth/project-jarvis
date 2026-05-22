@@ -16,9 +16,17 @@ complexity O(N)
 
     verify {
         test "dispatch_proof" {
-            assert(true);
+            let req = McpRequest { id: 1, method: "test", params: "{}" };
+            let res = dispatch_request(req);
+            assert(tg_ir.provider_agnostic_active());
+            assert(res != "");
+        }
+        test "fix_plan_proof" {
+            let plan = get_fix_plan("PDD_VIOLATION");
+            assert(tg_ir.is_valid_json_plan(plan));
         }
     }
+
     func dispatch_request(req: McpRequest) -> Stream {
         // Multi-Agent Gateway (MAG) Logic
         // Route to Anthropic, OpenAI, or Gemini via O(1) jump table
@@ -27,19 +35,8 @@ complexity O(N)
         return response;
     }
 
-    verify {
-        test "fix_plan_proof" {
-            let plan = get_fix_plan("PDD_VIOLATION");
-            assert(tg_ir.is_valid_json_plan(plan));
-        }
-    }
     func get_fix_plan(violation: Stream) -> Stream {
         // Autonomous Fix Plan Generation (Rev 6.0)
-        let plan = "{ 'action': 'patch' }";
-        return plan;
-    }
-}
-lan Generation (Rev 6.0)
         let plan = "{ 'action': 'patch' }";
         return plan;
     }

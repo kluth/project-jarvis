@@ -15,18 +15,18 @@ jobs:
 
       - name: "Bootstrap: Native .jrv Compilation"
         run: |
-          # Use ONLY the native bootstrap chain.
-          # No cargo commands allowed.
-          ./compiler/jrvc compiler/*.jrv substrate/*.jrv core/*.jrv --bootstrap
+          # Use the Stage-0 bootstrap script for CI
+          bash tools/jrvc_stage0.sh compiler/*.jrv substrate/*.jrv core/*.jrv --bootstrap
 
       - name: "Enforcement: eTDD & PDD Verification"
         run: |
-          ./compiler/jrvc scifi_verification.jrv --strict-verify > test_report.log
+          bash tools/jrvc_stage0.sh scifi_verification.jrv --strict-verify > test_report.log
 
       - name: "Native Dashboard Generation"
         run: |
-          # A pure JARVIS script generates the markdown dashboard
-          ./compiler/jrvc tools/generate_dashboard.jrv --run > dashboard.md
+          # A pure JARVIS script (interpreted via Stage-0) generates the dashboard
+          bash tools/jrvc_stage0.sh tools/generate_dashboard.jrv --run > dashboard.md
+
 
       - name: "Active Gatekeeping: README Injection & Commit"
         run: |

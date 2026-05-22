@@ -3,7 +3,14 @@ complexity O(1)
 {
     verify {
         test "thought_latency" {
-            assert(true);
+            let mock_stream = tg_ir.mock_stream(1024);
+            let out = process_thought(mock_stream);
+            assert(tg_ir.inspect_complexity(process_thought) == O(1));
+            assert(out.entropy < mock_stream.entropy);
+        }
+        test "brain_purity_proof" {
+            // Assert neural integrity within pure substrate
+            assert(tg_ir.is_machine_native());
         }
     }
 
@@ -90,12 +97,5 @@ complexity O(1)
         knowledge MDP: Vector[29]
         // 30. Genetic Algorithms
         knowledge GeneticAlgorithms: Vector[30]
-    }
-}
-ithms
-        knowledge GeneticAlgorithms: Vector[30]
-    }
-}
-knowledge GeneticAlgorithms: Vector[30]
     }
 }

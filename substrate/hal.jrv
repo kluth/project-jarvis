@@ -11,28 +11,28 @@ complexity O(1)
 
     verify {
         test "arch_proof" {
-            assert(true);
+            let arch = get_arch();
+            assert(arch >= 0);
+            assert(tg_ir.is_hardware_authorized());
+        }
+        test "io_proof" {
+            write_serial(65); // 'A'
+            assert(tg_ir.last_port_write() == 65);
+        }
+        test "trap_proof" {
+            assert(tg_ir.is_trap_handler_active());
         }
     }
+
     func get_arch() -> i32 {
         // Return Architecture enum (X86_64 = 0, ARM64 = 1, RISCV = 2)
         return 0;
     }
 
-    verify {
-        test "io_proof" {
-            assert(true);
-        }
-    }
     func write_serial(byte: i32) {
         port write(0x3F8, byte);
     }
 
-    verify {
-        test "trap_proof" {
-            assert(true);
-        }
-    }
     func trigger_trap(code: i32) {
         asm { "int 3" }
     }
