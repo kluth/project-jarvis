@@ -14,6 +14,7 @@ JARVIS is a 100% self-hosting, omni-architecture programming language and execut
 - **eTDD & PDD:** Mandatory mathematical proofs for every line of sovereign code.
 
 --- JARVIS Stage-0 Bootstrap Active ---
+--- JARVIS Stage-0 Bootstrap Active ---
 ## 📊 Scientific Dashboard (Rev 7.0)
 *Verified by the JARVIS Native Bootstrap Chain.*
 
