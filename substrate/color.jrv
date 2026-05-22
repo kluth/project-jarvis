@@ -1,0 +1,108 @@
+module UI.Palette
+complexity O(1)
+{
+    budget { power: 50_nj }
+
+    // Resolves ISSUE #21 — Color type + const palette + additive blend.
+    // First-class typed colors derived from the Stitch design tokens for the
+    // Aetheris Spatial Interface. Saturating component-wise addition lets the
+    // halo layer compose without overflowing into adjacent channels.
+
+    struct Color {
+        r: i32,
+        g: i32,
+        b: i32
+    }
+
+    // Stitch design tokens — single source of truth for the OS UI.
+    memory OBSIDIAN:     Color = Color { r: 0x0e, g: 0x0e, b: 0x0e }
+    memory GLASS:        Color = Color { r: 0x13, g: 0x1a, b: 0x1d }
+    memory GLASS_HEADER: Color = Color { r: 0x16, g: 0x1e, b: 0x22 }
+    memory GRID_LINE:    Color = Color { r: 0x12, g: 0x1d, b: 0x20 }
+    memory BORDER_CYAN:  Color = Color { r: 0x00, g: 0x3a, b: 0x45 }
+    memory NEON_CYAN:    Color = Color { r: 0x00, g: 0xda, b: 0xf3 }
+    memory BRIGHT_CYAN:  Color = Color { r: 0xb0, g: 0xf5, b: 0xff }
+    memory ORB_HOT:      Color = Color { r: 0x80, g: 0xe8, b: 0xf5 }
+    memory ACTIVE_TILE:  Color = Color { r: 0x15, g: 0x3a, b: 0x44 }
+    memory HALO_TINT:    Color = Color { r: 0x05, g: 0x0a, b: 0x0c }   // additive
+    memory STATUS_OK:    Color = Color { r: 0x34, g: 0xd3, b: 0x99 }   // emerald
+    memory STATUS_BAD:   Color = Color { r: 0xff, g: 0xb4, b: 0xab }   // error
+    memory SECONDARY:    Color = Color { r: 0x03, g: 0x56, b: 0xff }
+    memory LAVENDER:     Color = Color { r: 0xb6, g: 0xc4, b: 0xff }
+
+    verify {
+        test "rgb_constructor_proof" {
+            // rgb() produces the expected component values and the type is
+            // distinct from a bare i32 — passing an i32 where a Color is
+            // expected MUST fail typecheck.
+            let c = rgb(0x10, 0x20, 0x30);
+            assert(c.r == 0x10);
+            assert(c.g == 0x20);
+            assert(c.b == 0x30);
+            assert(tg_ir.type_of(c) != tg_ir.type_of(0));
+        }
+        test "hex_constructor_proof" {
+            // hex(0xRRGGBB) parses to the correct component order. The B byte
+            // is the low 8 bits — confirming the order is RGB not BGR.
+            let c = hex(0xb0f5ff);
+            assert(c.r == 0xb0);
+            assert(c.g == 0xf5);
+            assert(c.b == 0xff);
+        }
+        test "saturating_add_proof" {
+            // Component-wise saturating add: components never wrap into the
+            // neighbouring channel. Confirms the canonical halo blend.
+            let halo = blend(GRID_LINE, HALO_TINT);
+            assert(halo.r == 0x12 + 0x05);
+            assert(halo.g == 0x1d + 0x0a);
+            assert(halo.b == 0x20 + 0x0c);
+
+            let sat = blend(Color{r:0xfa,g:0xfa,b:0xfa}, Color{r:0x10,g:0x10,b:0x10});
+            assert(sat.r == 0xff);
+            assert(sat.g == 0xff);
+            assert(sat.b == 0xff);
+            assert(tg_ir.no_channel_overflow(sat));
+        }
+        test "stitch_token_parity_proof" {
+            // Each palette entry MUST exactly match the Stitch design token
+            // referenced in the Aetheris design source. Drift is rejected.
+            assert(tg_ir.matches_stitch_token("NEON_CYAN", 0x00daf3));
+            assert(tg_ir.matches_stitch_token("OBSIDIAN", 0x0e0e0e));
+            assert(tg_ir.matches_stitch_token("BRIGHT_CYAN", 0xb0f5ff));
+        }
+        test "const_folding_proof" {
+            // Palette references inside #[inner_loop] bodies MUST become
+            // immediate operands (see InnerLoopContract clause 6).
+            assert(tg_ir.palette_lowered_as_immediate("NEON_CYAN"));
+            assert(tg_ir.palette_lowered_as_immediate("HALO_TINT"));
+        }
+    }
+
+    func rgb(r: i32, g: i32, b: i32) -> Color {
+        return Color { r: r, g: g, b: b };
+    }
+
+    func hex(v: i32) -> Color {
+        let r = (v / 65536) % 256;
+        let g = (v / 256) % 256;
+        let b = v % 256;
+        return Color { r: r, g: g, b: b };
+    }
+
+    func blend(a: Color, b: Color) -> Color {
+        // Component-wise saturating add. `min` is folded at codegen so the
+        // hot path is two ADD + CMOV pairs per channel and no branches.
+        let rr = a.r + b.r;
+        let gg = a.g + b.g;
+        let bb = a.b + b.b;
+        if rr > 0xff { rr = 0xff; }
+        if gg > 0xff { gg = 0xff; }
+        if bb > 0xff { bb = 0xff; }
+        return Color { r: rr, g: gg, b: bb };
+    }
+
+    func pack_bgr24(c: Color) -> i32 {
+        // Packs a Color into the 24-bit BGR layout the VBE LFB expects.
+        return (c.b * 65536) + (c.g * 256) + c.r;
+    }
+}

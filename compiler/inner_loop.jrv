@@ -1,0 +1,153 @@
+module InnerLoopContract
+complexity O(1)
+{
+    budget { power: 600_nj }
+
+    // Resolves ISSUE #23 — tight inner-loop codegen contract.
+    // Declares the six clauses that an `#[inner_loop]`-annotated function
+    // MUST satisfy. Each clause is enforced by a separate verifier pass that
+    // names itself in any failure message, so a violation is actionable.
+
+    struct Contract {
+        no_heap: i32,
+        no_bounds_check: i32,
+        canonical_bgr24_write: i32,
+        branchless_cascade: i32,
+        no_panic: i32,
+        const_palette_immediate: i32
+    }
+
+    struct Diagnostic {
+        clause: Stream,
+        offending_symbol: Stream,
+        line: i32
+    }
+
+    verify {
+        test "no_heap_clause_proof" {
+            // Clause 1: zero heap allocation in the annotated body. Any call
+            // into Allocator.alloc from such a function is a compile error.
+            let body = tg_ir.mock_inner_loop_body("clean");
+            let dirty = tg_ir.mock_inner_loop_body("calls_alloc");
+            assert(check_no_heap(body) == 1);
+            assert(rejects(dirty, "no_heap"));
+        }
+        test "no_bounds_check_clause_proof" {
+            // Clause 2: bounds checks elide when the loop bounds prove the
+            // indices safe. The compiler MUST emit zero CMP+JAE pairs in
+            // such code paths.
+            let body = tg_ir.mock_inner_loop_body("proven_bounds");
+            assert(check_no_bounds_check(body) == 1);
+            assert(tg_ir.cmp_jae_count(body) == 0);
+        }
+        test "canonical_bgr24_write_clause_proof" {
+            // Clause 3: a 24bpp BGR pixel write MUST lower to the canonical
+            // sequence (`mov word [ptr], ax ; shr eax, 16 ; mov byte [ptr+2], al ; add ptr, 3`)
+            // and never to `stosd`, which would corrupt 4-byte aligned pixels.
+            let body = tg_ir.mock_inner_loop_body("pixel_write");
+            assert(check_canonical_bgr24(body) == 1);
+            assert(tg_ir.uses_stosd(body) == 0);
+        }
+        test "branchless_cascade_clause_proof" {
+            // Clause 4: layer cascades whose conditions are statically
+            // mutually exclusive MUST lower to a jump table or CMOV sequence.
+            let body = tg_ir.mock_inner_loop_body("mutex_layers");
+            assert(check_branchless(body) == 1);
+            assert(tg_ir.conditional_jump_count(body) <= 1);
+        }
+        test "no_panic_clause_proof" {
+            // Clause 5: integer overflow uses wrapping semantics and div-by-0
+            // in the body is a static error. No runtime panic landing pad is
+            // emitted, so no slow path leaks into the inner loop's icache.
+            let body = tg_ir.mock_inner_loop_body("wrap_safe");
+            assert(check_no_panic(body) == 1);
+            assert(tg_ir.has_panic_landing_pad(body) == 0);
+        }
+        test "const_palette_immediate_clause_proof" {
+            // Clause 6: references to `UI.Palette.*` MUST become `mov reg, imm32`
+            // and not a load from .rodata. Otherwise each pixel pays a cache miss.
+            let body = tg_ir.mock_inner_loop_body("uses_palette");
+            assert(check_palette_immediate(body) == 1);
+            assert(tg_ir.palette_loads_from_memory(body) == 0);
+        }
+        test "visibility_via_emit_asm_proof" {
+            // Compiling with `--emit-asm` MUST surface the emitted inner loop
+            // for human inspection. The verifier fails if the asm dump is
+            // empty or stripped of the loop label.
+            assert(tg_ir.emit_asm_includes_label("render_scanline"));
+        }
+    }
+
+    func check_no_heap(body: Stream) -> i32 {
+        // Walks the body looking for any call that resolves to Allocator.alloc.
+        let n = tg_ir.count_heap_calls(body);
+        if n > 0 {
+            volatile write(0xDEAD, 11);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func check_no_bounds_check(body: Stream) -> i32 {
+        // The bounds-elision pass marks proven-safe indexing sites; any site
+        // that still has a runtime check after the pass is a clause failure.
+        let unchecked = tg_ir.unproven_index_count(body);
+        if unchecked > 0 {
+            volatile write(0xDEAD, 12);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func check_canonical_bgr24(body: Stream) -> i32 {
+        // Forbids stosd in any context that targets a 24bpp framebuffer; the
+        // canonical word+byte pair is the only legal lowering.
+        let bad = tg_ir.uses_stosd(body);
+        if bad == 1 {
+            volatile write(0xDEAD, 13);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func check_branchless(body: Stream) -> i32 {
+        // Counts conditional jumps that survive the mutex-cascade pass.
+        let jumps = tg_ir.conditional_jump_count(body);
+        if jumps > 1 {
+            volatile write(0xDEAD, 14);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func check_no_panic(body: Stream) -> i32 {
+        // The body MUST have no landing pad — otherwise the JIT might insert
+        // a slow path which murders the prefetcher inside the hot loop.
+        let lp = tg_ir.has_panic_landing_pad(body);
+        if lp == 1 {
+            volatile write(0xDEAD, 15);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func check_palette_immediate(body: Stream) -> i32 {
+        // Const palette references must fold to immediate operands.
+        let loads = tg_ir.palette_loads_from_memory(body);
+        if loads > 0 {
+            volatile write(0xDEAD, 16);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func rejects(body: Stream, clause: Stream) -> i32 {
+        // Helper used by the verify-block. Returns 1 iff the verifier rejects
+        // the provided body with a diagnostic naming the given clause.
+        let diag = tg_ir.last_inner_loop_diagnostic();
+        if tg_ir.string_eq(diag, clause) == 1 {
+            return 1;
+        }
+        return 0;
+    }
+}

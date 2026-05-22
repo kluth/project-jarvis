@@ -1,0 +1,99 @@
+module Boot.Handoff
+complexity O(1)
+{
+    budget { power: 100_nj }
+
+    // Resolves ISSUE #22 — Stage-1 → .jrv handoff struct.
+    // Stage-1 of `kluth/jarvis-os/boot.asm` populates this struct at the
+    // fixed physical address 0x8000 before jumping to protected mode. The
+    // .jrv kernel then reads it instead of magic-poking [0x9028] for the LFB
+    // base. Real-mode BIOS calls (int 0x10 ax=4f01) remain in the asm stub —
+    // everything from the protected-mode entry forward is pure .jrv.
+
+    struct VbeInfo {
+        lfb_phys_addr: i32,          // VBE ModeInfoBlock offset 0x28
+        width: i32,                  // pixels
+        height: i32,                 // pixels
+        bytes_per_scanline: i32,     // typically width * bpp/8
+        bits_per_pixel: i32,         // 24 for mode 0x115
+        color_order: i32             // 0 = BGR, 1 = RGB
+    }
+
+    struct Handoff {
+        magic: i32,                  // 0xAE7EB1F5 — "Aetheris"
+        vbe: VbeInfo,
+        frame_count: i32,            // writable; incremented by Scheduler
+        boot_time_ms: i32
+    }
+
+    memory HANDOFF_REGION: Handoff = Handoff {
+        magic: 0xAE7EB1F5,
+        vbe: VbeInfo { lfb_phys_addr: 0, width: 800, height: 600, bytes_per_scanline: 2400, bits_per_pixel: 24, color_order: 0 },
+        frame_count: 0,
+        boot_time_ms: 0
+    }
+
+    verify {
+        test "magic_proof" {
+            // The handoff's magic word MUST be exactly 0xAE7EB1F5. The
+            // kernel refuses to boot if this is not present at 0x8000 —
+            // it means Stage-1 did not run.
+            let h = get();
+            assert(h.magic == 0xAE7EB1F5);
+            assert(tg_ir.handoff_magic_at(0x8000) == 0xAE7EB1F5);
+        }
+        test "lfb_phys_addr_match_proof" {
+            // The LFB physical address stored in VbeInfo MUST equal the
+            // address Stage-1 wrote (sourced from VBE ModeInfoBlock + 0x28).
+            // This is what permits deleting the magic `[0x9028]` poke.
+            let h = get();
+            assert(h.vbe.lfb_phys_addr == tg_ir.vbe_mode_info_field(0x28));
+        }
+        test "frame_count_writable_proof" {
+            // The scheduler updates frame_count once per VSync. The struct
+            // MUST be writable from the .jrv kernel (no .rodata section).
+            tick_frame();
+            assert(tg_ir.handoff_frame_count() == 1);
+            tick_frame();
+            assert(tg_ir.handoff_frame_count() == 2);
+        }
+        test "multi_resolution_proof" {
+            // Changing the VBE mode in Stage-1 alone (e.g. to 1024x768) must
+            // surface here without any .jrv changes. The verifier swaps the
+            // ModeInfoBlock and re-reads.
+            let h = get_for_mode(0x118);   // 1024x768x24
+            assert(h.vbe.width == 1024);
+            assert(h.vbe.height == 768);
+            assert(h.vbe.bytes_per_scanline == 3072);
+        }
+        test "no_asm_after_handoff_proof" {
+            // From the protected-mode entry onward, NO asm{} blocks may
+            // exist on the boot path. Stage-2 protected-mode rendering asm
+            // is dead.
+            assert(tg_ir.asm_blocks_after_pm_entry() == 0);
+        }
+    }
+
+    func get() -> Handoff {
+        // Returns the populated handoff. The pointer is fixed at 0x8000 by
+        // the linker; tg_ir.read_handoff models the load.
+        let h = tg_ir.read_handoff(0x8000);
+        return h;
+    }
+
+    func get_for_mode(mode: i32) -> Handoff {
+        // Used by the multi-resolution proof. Triggers a re-population via
+        // the verifier's mock VBE info block.
+        tg_ir.set_vbe_mode(mode);
+        return get();
+    }
+
+    func tick_frame() {
+        // Called by Kernel.Scheduler.on_frame to advance the animation
+        // phase. The increment targets the frame_count field at offset 28
+        // (magic:4 + VbeInfo:24); writing 0x8000 itself would clobber the
+        // magic word and the kernel would refuse subsequent reads.
+        let h = get();
+        volatile write(0x8000 + 28, h.frame_count + 1);
+    }
+}

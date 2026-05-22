@@ -1,0 +1,176 @@
+module UI.Compositor
+complexity O(N)
+{
+    budget { power: 25000_nj }
+
+    // Resolves ISSUE #19 — UI.Compositor declarative layered scene.
+    // Lets a scene be declared as a stack of layers; the compiler fuses the
+    // declarations into a single per-frame inner-loop cascade (back-to-front)
+    // and emits the same kind of pixel pipeline the previous hand-rolled asm
+    // produced — but with eTDD per layer and one source of truth per shape.
+
+    struct Layer {
+        z: i32,                        // back-to-front order
+        kind: i32,                     // 0=fill, 1=rect, 2=ring, 3=circle, 4=line_h, 5=lattice, 6=pill, 7=halo_add
+        x: i32, y: i32, w: i32, h: i32,
+        color_id: i32,                 // index into the bound palette
+        phase_field: i32               // 0 = static, 1 = uses frame_n
+    }
+
+    struct Scene {
+        name: Stream,
+        layer_count: i32,
+        layers_ptr: Stream             // points to a Layer table in .rodata
+    }
+
+    verify {
+        test "layer_order_preserved_proof" {
+            // The compiled cascade MUST evaluate layers in declared order so
+            // the painter's algorithm is correct (later layers occlude earlier).
+            let s = mock_scene_2();
+            compose(s, 0);
+            assert(tg_ir.last_pixel_owner(400, 280) == 1);    // top layer owned
+            assert(tg_ir.last_pixel_owner(0, 0) == 0);        // background only
+        }
+        test "single_inner_loop_codegen_proof" {
+            // The compositor MUST fuse all layers into a single inner loop —
+            // not one loop per layer. Otherwise per-pixel cache behavior dies.
+            let s = mock_scene_10();
+            assert(tg_ir.compositor_emits_single_loop(s));
+            assert(tg_ir.inner_loop_iteration_count(s) == 480000);   // 800*600
+        }
+        test "per_layer_etdd_proof" {
+            // Every layer in a scene carries its own eTDD proof — coverage
+            // is enforced layer-by-layer, not just at the scene level.
+            let s = mock_scene_10();
+            assert(tg_ir.every_layer_has_proof(s));
+        }
+        test "frame_phase_derivation_proof" {
+            // Layers whose phase_field == 1 see their geometry/color shift
+            // as a function of frame_n alone — no global mutable state.
+            let s = mock_scene_animated();
+            compose(s, 0);
+            let p0 = tg_ir.scanline_y_at_frame(0);
+            compose(s, 12);
+            let p12 = tg_ir.scanline_y_at_frame(12);
+            assert(p0 != p12);
+            assert(tg_ir.animation_state_is_pure(s));
+        }
+        test "geometry_edit_is_one_line_proof" {
+            // Verifies maintainability: changing a layer rect in source
+            // produces a delta only at the cascade's geometry cell, not a
+            // hunt across the codegen output.
+            assert(tg_ir.scene_edit_locality("SpatialInterface", "SubstrateHealth.x") == 1);
+        }
+        test "frame_budget_proof" {
+            // A 10-layer 800x600 scene MUST sustain >= 60 Hz on QEMU `-vga std`.
+            let s = mock_scene_10();
+            compose(s, 0);
+            assert(tg_ir.last_call_cycles("compose") <= tg_ir.frame_budget_cycles());
+        }
+        test "lattice_geometry_proof" {
+            // A lattice layer MUST emit a regular 64-pixel stride in both
+            // axes. Sampling on-stride and off-stride pixels confirms the
+            // expected coverage pattern in the framebuffer.
+            let layer = tg_ir.mock_lattice_layer(0, 0, 256, 256, 64);
+            paint_lattice(layer, tg_ir.palette_index(0));
+            assert(tg_ir.fb_pixel_present(64, 32));
+            assert(tg_ir.fb_pixel_present(32, 64));
+            assert(tg_ir.fb_pixel_absent(33, 33));
+        }
+        test "pill_endcap_proof" {
+            // A pill layer MUST round the two ends (circles of radius h/2)
+            // and leave the body as a contiguous rect. Sampling outside the
+            // pill's bounding rounded box yields an absent pixel.
+            let layer = tg_ir.mock_pill_layer(280, 550, 240, 40);
+            paint_pill(layer, tg_ir.palette_index(0));
+            assert(tg_ir.fb_pixel_present(280 + 20, 550 + 20));
+            assert(tg_ir.fb_pixel_present(280 + 240 - 20, 550 + 20));
+            assert(tg_ir.fb_pixel_absent(280 - 1, 550 - 1));
+        }
+        test "scanline_phase_derivation_proof" {
+            // derive_y MUST be a pure function of the layer + frame_n; same
+            // inputs yield the same output across calls, and an animated
+            // layer's y is strictly different across two distinct frames.
+            let static_layer = tg_ir.mock_layer_with_phase(0, 100);
+            let animated     = tg_ir.mock_layer_with_phase(1, 100);
+            assert(derive_y(static_layer, 0)   == derive_y(static_layer, 99));
+            assert(derive_y(animated, 0)       != derive_y(animated, 14));
+        }
+    }
+
+    func compose(scene: Scene, frame_n: i32) {
+        // The fused per-frame entry. The compiler unrolls this against the
+        // layer table at codegen time, so the runtime sees one tight loop.
+        let i = 0;
+        while i < scene.layer_count {
+            paint_layer(scene, i, frame_n);
+            i = i + 1;
+        }
+    }
+
+    func paint_layer(scene: Scene, idx: i32, frame_n: i32) {
+        // Dispatch on layer kind. After codegen this becomes a jump table
+        // because the kind tags are mutually exclusive constant predicates
+        // (see InnerLoopContract clause 4 — branchless cascade).
+        let layer = tg_ir.scene_layer(scene, idx);
+        let color = tg_ir.palette_index(layer.color_id);
+
+        if layer.kind == 0 { HAL.Framebuffer.rect(0, 0, 800, 600, color); }
+        if layer.kind == 1 { HAL.Framebuffer.rect(layer.x, layer.y, layer.w, layer.h, color); }
+        if layer.kind == 2 { HAL.Framebuffer.ring(layer.x, layer.y, layer.w, layer.h, color); }
+        if layer.kind == 3 { HAL.Framebuffer.circle(layer.x, layer.y, layer.w, color); }
+        if layer.kind == 4 { HAL.Framebuffer.line_h(layer.x, derive_y(layer, frame_n), layer.w, color); }
+        if layer.kind == 5 { paint_lattice(layer, color); }
+        if layer.kind == 6 { paint_pill(layer, color); }
+        if layer.kind == 7 { HAL.Framebuffer.add_blend(layer.x, layer.y, color); }
+    }
+
+    func derive_y(layer: Layer, frame_n: i32) -> i32 {
+        // Pure function of frame_n. For the scanline this gives the sweeping
+        // y coordinate; identical across boot resumes when frame_n is restored.
+        if layer.phase_field == 0 {
+            return layer.y;
+        }
+        return layer.y + (frame_n / 2) % layer.h;
+    }
+
+    func paint_lattice(layer: Layer, color: i32) {
+        // 64x64 grid lines across the layer's rect. Used for the spatial
+        // grid layer of the Aetheris design.
+        let y = layer.y;
+        while y < layer.y + layer.h {
+            HAL.Framebuffer.line_h(layer.x, y, layer.w, color);
+            y = y + 64;
+        }
+        let x = layer.x;
+        while x < layer.x + layer.w {
+            let row = 0;
+            while row < layer.h {
+                HAL.Framebuffer.pixel(x, layer.y + row, color);
+                row = row + 1;
+            }
+            x = x + 64;
+        }
+    }
+
+    func paint_pill(layer: Layer, color: i32) {
+        // Rectangle with rounded caps — the nav pill at the bottom of the
+        // Aetheris frame. Implemented as a rect + two circles.
+        HAL.Framebuffer.rect(layer.x + layer.h / 2, layer.y, layer.w - layer.h, layer.h, color);
+        HAL.Framebuffer.circle(layer.x + layer.h / 2, layer.y + layer.h / 2, layer.h / 2, color);
+        HAL.Framebuffer.circle(layer.x + layer.w - layer.h / 2, layer.y + layer.h / 2, layer.h / 2, color);
+    }
+
+    func mock_scene_2() -> Scene {
+        return Scene { name: "two_layer", layer_count: 2, layers_ptr: tg_ir.mock_scene_table(2) };
+    }
+
+    func mock_scene_10() -> Scene {
+        return Scene { name: "aetheris", layer_count: 10, layers_ptr: tg_ir.mock_scene_table(10) };
+    }
+
+    func mock_scene_animated() -> Scene {
+        return Scene { name: "animated", layer_count: 3, layers_ptr: tg_ir.mock_scene_table_animated() };
+    }
+}

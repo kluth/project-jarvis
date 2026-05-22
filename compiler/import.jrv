@@ -1,0 +1,91 @@
+module ImportResolver
+complexity O(log N)
+{
+    budget { power: 1500_nj }
+
+    // Resolves ISSUE #13 — Multi-file Module Support.
+    // The `import` keyword binds a remote module by name into the local
+    // verifier context. Lookup is a balanced search over the interned module
+    // table, hence O(log N) on the module count.
+
+    struct ModuleHandle {
+        name: Stream,
+        path: Stream,
+        digest: i32,      // SHA-256 truncated to fingerprint
+        verified: i32
+    }
+
+    struct ImportEdge {
+        from: Stream,
+        to: Stream,
+        cycle_guard: i32
+    }
+
+    verify {
+        test "lookup_complexity_proof" {
+            // Resolution MUST be O(log N) — a linear walk would break the
+            // omni-architecture deploy-time budget on large fleets.
+            let h = resolve("HAL");
+            assert(h.verified == 1);
+            assert(tg_ir.inspect_complexity(resolve) == O(log N));
+        }
+        test "digest_match_proof" {
+            // The verifier MUST refuse to bind a module whose interface
+            // digest differs from the one the importer was compiled against.
+            // Without this, cross-module proofs are forgeable.
+            let h = resolve("Scheduler");
+            assert(h.digest != 0);
+            assert(tg_ir.digest_matches(h.name, h.digest));
+        }
+        test "cycle_rejection_proof" {
+            // Cyclic import graphs are an architectural violation; the
+            // Omega pass MUST halt the build instead of attempting to break
+            // the cycle silently.
+            let edge = ImportEdge { from: "A", to: "B", cycle_guard: 0 };
+            let safe = guard_against_cycle(edge);
+            assert(safe == 1);
+            assert(tg_ir.import_graph_acyclic());
+        }
+        test "cross_module_etdd_proof" {
+            // When module A imports module B, A's verify-block sees B's
+            // proofs as preconditions. Coverage is computed across the
+            // closure, not just the local file.
+            let cov = compute_closure_coverage("Boot.Handoff");
+            assert(cov == 100);
+            assert(tg_ir.closure_coverage_pure("Boot.Handoff"));
+        }
+    }
+
+    func resolve(name: Stream) -> ModuleHandle {
+        // Logarithmic lookup over the module table. tg_ir.lookup_module
+        // backs onto a balanced BST keyed on the interned name pointer.
+        let entry = tg_ir.lookup_module(name);
+        let digest = tg_ir.module_digest(entry);
+
+        return ModuleHandle {
+            name: name,
+            path: tg_ir.module_path(entry),
+            digest: digest,
+            verified: tg_ir.module_verified(entry)
+        };
+    }
+
+    func guard_against_cycle(edge: ImportEdge) -> i32 {
+        // The cycle_guard field is a high-water mark of the import depth
+        // along this edge. If the same edge is revisited at a deeper depth
+        // the verifier traps the build.
+        if tg_ir.edge_revisited(edge.from, edge.to) == 1 {
+            volatile write(0xDEAD, 7);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func compute_closure_coverage(root: Stream) -> i32 {
+        // Walks the transitive import graph of `root` and returns the
+        // minimum coverage of any reachable module. 100 means the entire
+        // closure is fully eTDD covered.
+        let min_cov = tg_ir.fold_closure_min_coverage(root);
+        return min_cov;
+    }
+}
