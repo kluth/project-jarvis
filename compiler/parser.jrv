@@ -25,6 +25,12 @@ complexity O(N)
             let ast = parse_statement(state);
             assert(tg_ir.is_valid_ast_node(ast));
         }
+        test "prob_block_proof" {
+            let state = ParserState { tokens: "prob { 0.5: call() }", cursor: 0 };
+            let ast = parse_prob_block(state);
+            assert(ast.type_id == 3); // PROB_BLOCK ID
+            assert(tg_ir.has_stochastic_branch(ast));
+        }
     }
 
     func parse_module(state: ParserState) -> ASTNode {
