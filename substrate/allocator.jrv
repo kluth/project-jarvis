@@ -13,11 +13,23 @@ complexity O(1)
         address_hash: i32
     }
 
+    struct LifeRegion {
+        id: i32,
+        base_ptr: Stream,
+        current_offset: i32,
+        limit: i32
+    }
+
     verify {
         test "neural_lattice_proof" {
             let token = neural_alloc(128, 42);
             assert(token.lattice_id != 0);
             assert(tg_ir.is_synaptic_mapping_valid(token));
+        }
+        test "life_region_proof" {
+            let region = create_life_region(4096);
+            assert(region.id != 0);
+            assert(tg_ir.region_bounds_verified(region.id, 4096));
         }
         test "overflow_protection_proof" {
             let token = neural_alloc(64, 10);
@@ -37,6 +49,18 @@ complexity O(1)
         let hash = tg_ir.hash_neural_bounds(size);
         
         return SynapticToken { lattice_id: id, neuron_weight: weight, address_hash: hash };
+    }
+
+    func create_life_region(size: i32) -> LifeRegion {
+        // ADR 002: Region-based memory management for bulk reclamation.
+        let id = tg_ir.allocate_region(size);
+        let base = tg_ir.get_region_base(id);
+        return LifeRegion { id: id, base_ptr: base, current_offset: 0, limit: size };
+    }
+
+    func free_life_region(region: LifeRegion) {
+        // Bulk-frees the entire region, avoiding fragmentation.
+        tg_ir.deallocate_region(region.id);
     }
 
     func pin_token(token: SynapticToken) {
