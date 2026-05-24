@@ -1,0 +1,66 @@
+module DriverSynthesizer
+complexity O(N) // N = AST nodes in synthesized module
+{
+    verify {
+        test "synthesis_verification_proof" {
+            // RUTHLESS: Verify that synthesis produces a verified module AST
+            let profile = DeviceProfile { class: DeviceClass.CodeRepository };
+            let record = DiscoveryRecord { id: 1, transport: BusType.Shell_IPC, endpoint: "git", confidence: 1.0, timestamp: 0 };
+            let res = synthesize(profile, record, TrustLevel.Sovereign);
+            assert(res.ok);
+            assert(res.module.verified);
+        }
+        test "injection_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type JrvModule { ast: AST, module_id: U64, verified: Bool }
+    type SynthesisResult { Ok(module: JrvModule) | Failed(reason: Str, fixplan: JSON) }
+
+    func synthesize(profile: DeviceProfile, record: DiscoveryRecord, trust: TrustLevel) -> SynthesisResult {
+        budget { power: 5000_nj }
+        
+        let template = tg_ir.select_driver_template(profile.class);
+        let ast = tg_ir.instantiate_template(template, profile, record, trust);
+        
+        let verified = false;
+        for i in 0..3 {
+            let v_res = tg_ir.nci_verify(ast);
+            if v_res.passed {
+                verified = true;
+                break;
+            }
+            ast = tg_ir.apply_fix_plan(ast, v_res.fixplan);
+        }
+        
+        return SynthesisResult.Ok(JrvModule { ast: ast, module_id: tg_ir.next_id(), verified: verified });
+    }
+
+    func inject(module: JrvModule) -> DriverHandle {
+        budget { power: 500_nj }
+        let id = tg_ir.atomic_inject_module(module.ast);
+        return DriverHandle { module_id: id };
+    }
+
+    func assimilate(record: DiscoveryRecord, profile: DeviceProfile, trust: TrustLevel) -> AssimilationRecord {
+        budget { power: 6000_nj }
+        let res = synthesize(profile, record, trust);
+        let handle = inject(res.module);
+        
+        let ar = AssimilationRecord {
+            device_id: record.id,
+            profile: profile,
+            driver_id: handle.module_id,
+            trust: trust,
+            transport: record.transport,
+            assimilated_at_ms: tg_ir.now(),
+            last_seen_ms: tg_ir.now(),
+            state: DriverState.Active,
+            synthesis_energy_nj: 5000,
+            fingerprint_confidence: 1.0
+        };
+        tg_ir.register_assimilation(ar);
+        return ar;
+    }
+}

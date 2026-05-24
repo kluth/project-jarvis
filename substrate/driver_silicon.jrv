@@ -1,0 +1,23 @@
+module SiliconScanner
+complexity O(1)
+{
+    verify {
+        test "silicon_purity_proof" {
+            // Assert that we are executing raw machine instructions
+            assert(tg_ir.is_machine_native());
+        }
+        test "silicon_discovery_deterministic" {
+            let res1 = interrogate_silicon();
+            let res2 = interrogate_silicon();
+            assert(res1.midr == res2.midr);
+        }
+    }
+
+    type SiliconRecord { midr: U64, implementer: U32, part_num: U32, features: U64 }
+
+    func interrogate_silicon() -> SiliconRecord {
+        budget { power: 100_nj }
+        // Represented by 'mrs x0, midr_el1' at the TG-IR level
+        return tg_ir.asm_mrs_midr();
+    }
+}

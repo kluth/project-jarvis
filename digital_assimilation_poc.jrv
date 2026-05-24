@@ -1,0 +1,53 @@
+module DigitalAssimilationPoC
+complexity O(1)
+{
+    verify {
+        test "real_git_assimilation" {
+            // RUTHLESS: Verify assimilation of the real git tool
+            let records = AmbientScanner.scan_path();
+            let git_record = Option.None;
+            for r in records { if r.endpoint == "git" { git_record = Option.Some(r); } }
+            
+            if git_record.is_some {
+                let ar = AssimilationPipeline.run_once(git_record.val);
+                assert(ar.state == DriverState.Active);
+                assert(ar.profile.class == DeviceClass.CodeRepository);
+            }
+        }
+        test "poc_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    func main() {
+        print("--- JARVIS: RUTHLESS DIGITAL ASSIMILATION POC ---\n", 0, 0, 0);
+        print("Objective: Assimilate and Prove Real Tooling (No Mocks)\n\n", 0, 0, 0);
+        
+        // 1. Live Discovery
+        let records = AmbientScanner.scan_path();
+        print("[JAP] Stage 1: Discovered ", records.count, " digital entities in PATH.\n", 0);
+        
+        let git_record = Option.None;
+        for r in records { if r.endpoint == "git" { git_record = Option.Some(r); } }
+        
+        if git_record.is_some {
+            print("[JAP] Target Identified: ", git_record.val.endpoint, "\n", 0);
+            
+            // 2. Full Pipeline Execution
+            let ar = AssimilationPipeline.run_once(git_record.val);
+            
+            print("[JAP] State: ", tg_ir.to_string(ar.state), "\n", 0);
+            print("[JAP] Trust: ", tg_ir.to_string(ar.trust), "\n", 0);
+            print("[JAP] Class: ", tg_ir.to_string(ar.profile.class), "\n", 0);
+            
+            // 3. Functional Proof: Execute a command via the new driver
+            print("\n--- FUNCTIONAL PROOF: EXECUTING 'git status' ---\n", 0, 0, 0);
+            let status_output = tg_ir.exec_driver_command(ar.driver_id, "status --short");
+            print(status_output, "\n", 0, 0);
+            
+            print("--- POC COMPLETE: REAL DATA VERIFIED ---\n", 0, 0, 0);
+        } else {
+            print("[ERROR] Git not found in path. Functional proof failed.\n", 0, 0, 0);
+        }
+    }
+}

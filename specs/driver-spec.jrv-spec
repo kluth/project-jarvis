@@ -1,0 +1,29 @@
+# SOVEREIGN SPECIFICATION: DIGITAL DRIVER SUBSYSTEM (REV 2.0)
+
+## 1. Digital Lifecycle State Machine
+- **Nodes**: Disconnected, Probing, Binding, Active, Suspended, Tombstoned
+- **Transitions**:
+  - `Disconnected → Probing` (triggered by scanner discovery of port/path/env)
+  - `Probing → Active` (on `ProbeResult.Ok` - capability handshake success)
+  - `Active → Suspended` (on network timeout or process termination)
+  - `Suspended → Active` (on reconnection/re-spawn)
+
+## 2. Invariants (NCI Enforced)
+- **INV-1 (Isolation)**: `UNTRUSTED` digital drivers cannot access the system `Shell_IPC`.
+- **INV-2 (Privacy)**: API keys discovered in `scan_env()` must be zeroed immediately after driver bind.
+- **INV-3 (Integrity)**: All MCP tool calls MUST match the verifiable `.jrv-skill` manifest.
+- **INV-4 (Concurrency)**: No more than 3 concurrent `REST_API` calls per `LLM_Swarm` node.
+
+## 3. Digital Energy Envelope (nanojoules)
+- `scan_path()`: 2000 nj
+- `scan_mcp()`: 5000 nj
+- `REST_API call`: 10000 nj (includes latency wait-state)
+- `MCP tool execute`: 8000 nj
+- `Driver Synthesis (Digital)`: 5000 nj
+
+## 4. Digital Complexity Contracts
+- `scan_path()`: O(PATH_SIZE)
+- `scan_mcp()`: O(N) where N = open ports
+- `REST_API call`: O(1)
+- `MCP interaction`: O(1)
+- `Synthesize(AST)`: O(N) where N = AST nodes

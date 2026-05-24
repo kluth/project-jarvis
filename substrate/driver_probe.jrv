@@ -1,0 +1,89 @@
+module DriverProbe
+complexity O(1)
+{
+    verify {
+        test "probe_is_deterministic" {
+            let device = tg_ir.mock_device("PCIe", 0x1234);
+            let res1 = probe(device);
+            let res2 = probe(device);
+            assert(res1 == res2);
+        }
+        test "negotiate_never_exceeds_declared_capability" {
+            let caps = Capability { has_simd256: false, has_gpu: true, vram_bytes: 1024 };
+            let path = negotiate(caps);
+            assert(path != CodePath.Optimal); // Optimal requires SIMD256 in this logic
+        }
+        test "deferred_probe_retried_when_condition_becomes_true" {
+            let ready = false;
+            let cond = func() -> Bool { return ready; };
+            let fired = false;
+            let cb = func() { fired = true; };
+            let handle = defer_until(cond, cb);
+            assert(fired == false);
+            ready = true;
+            // In a real substrate, the scheduler would trigger this.
+            // Here we mock the trigger.
+            tg_ir.trigger_defer(handle);
+            assert(fired == true);
+        }
+        test "unknown_device_returns_failed_not_crash" {
+            let unknown = tg_ir.mock_device("Null", 0x0000);
+            let res = probe(unknown);
+            assert(res == ProbeResult.Failed("Unknown transport"));
+        }
+        test "capability_union_is_commutative" {
+            let a = Capability { has_simd128: true };
+            let b = Capability { has_gpu: true };
+            assert(capability_union(a, b) == capability_union(b, a));
+        }
+        test "probe_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type ProbeResult { Ok(Capability) | Deferred(reason: Str) | Failed(err: Str) }
+    type Capability { has_simd128: Bool, has_simd256: Bool, has_gpu: Bool,
+                      vram_bytes: U64, has_display: Bool, has_audio_in: Bool,
+                      has_audio_out: Bool, has_network: Bool, has_storage: Bool,
+                      has_bluetooth: Bool, has_wifi: Bool, has_nfc: Bool,
+                      has_zigbee: Bool, version: U32, energy_class: U8 }
+    type CodePath { Optimal | Fallback(reason: Str) | Minimal }
+    type DeferHandle { id: U64 }
+
+    func probe(device: Device) -> ProbeResult {
+        budget { power: 500_nj }
+        if device.bus == "Null" {
+            return ProbeResult.Failed("Unknown transport");
+        }
+        // In practice, this would perform HPL register reads.
+        let caps = tg_ir.inspect_device_caps(device);
+        return ProbeResult.Ok(caps);
+    }
+
+    func negotiate(caps: Capability) -> CodePath {
+        budget { power: 100_nj }
+        if caps.has_simd256 && caps.has_gpu {
+            return CodePath.Optimal;
+        }
+        if caps.has_simd128 {
+            return CodePath.Fallback("SIMD128 only");
+        }
+        return CodePath.Minimal;
+    }
+
+    func defer_until(cond: func() -> Bool, cb: func) -> DeferHandle {
+        budget { power: 150_nj }
+        let id = tg_ir.register_deferred_action(cond, cb);
+        return DeferHandle { id: id };
+    }
+
+    func capability_union(a: Capability, b: Capability) -> Capability {
+        budget { power: 50_nj }
+        return tg_ir.bit_or(a, b);
+    }
+
+    func capability_intersection(a: Capability, b: Capability) -> Capability {
+        budget { power: 50_nj }
+        return tg_ir.bit_and(a, b);
+    }
+}

@@ -30,4 +30,17 @@ The compiler exposes an **MCP Server** for real-time symbiosis.
 - **`budget`**: Nanojoule energy constraints.
 - **`contract`**: Formal safety guarantees.
 
+## 5. Sovereign Driver Ecosystem
+The JARVIS Driver Subsystem ensures hardware isolation and self-regulation.
+- **KDL/UDL Split**: Absolute separation between hardware registers and user-mode logic.
+- **Probe/Negotiate/Defer**: Dynamic capability negotiation and dependency-aware initialization.
+- **Energy-Gated Rendering**: 3D/GPU logic with compile-time nanojoule budget enforcement.
+
+## 6. Ambient Assimilation (JAP)
+The **Jarvis Assimilation Protocol (JAP)** enables the autonomous absorption of environmental hardware.
+- **Multi-Transport Scanning**: Concurrent detection across Bluetooth, WiFi, mDNS, and local buses.
+- **Behavioral Fingerprinting**: Identification of unknown devices through traffic pattern analysis.
+- **Runtime Synthesis**: Automated generation and hot-swap injection of verifiable `.jrv` driver modules.
+- **Trust Sovereignty**: Granular trust levels (Untrusted → Sovereign) gated by policy and operator proof.
+
 **JARVIS IS THE MATHEMATICAL GUARANTEE OF PROGRESS.**

@@ -1,0 +1,129 @@
+module AmbientDeviceRegistry
+complexity O(log N) // B-tree indexed by device_id
+{
+    verify {
+        test "lookup_after_register_returns_identical_entry" {
+            let entry = RegistryEntry { device_id: 1, state: DriverState.Active };
+            register(entry);
+            let result = lookup(1);
+            assert(result.device_id == 1);
+        }
+        test "tombstoned_entry_not_returned_by_normal_lookup" {
+            let entry = RegistryEntry { device_id: 2, state: DriverState.Active };
+            register(entry);
+            tombstone(2);
+            let result = lookup(2);
+            assert(result.is_none);
+        }
+        test "fast_reactivate_does_not_call_synthesizer" {
+            let entry = RegistryEntry { device_id: 3, state: DriverState.Evicted, driver_handle: Option.Some(DriverHandle { module_id: 100 }) };
+            register(entry);
+            let handle = fast_reactivate(3);
+            assert(handle.module_id == 100);
+            assert(tg_ir.call_count("DriverSynthesizer.synthesize") == 0);
+        }
+        test "heartbeat_miss_increments_counter" {
+            let entry = RegistryEntry { device_id: 4, miss_count: 0 };
+            register(entry);
+            record_heartbeat(4, false);
+            let updated = lookup_all().find(4);
+            assert(updated.miss_count == 1);
+        }
+        test "max_misses_triggers_suspended_transition" {
+            let entry = RegistryEntry { device_id: 5, state: DriverState.Active, miss_count: 4 };
+            register(entry);
+            record_heartbeat(5, false); // Assuming max_misses is 5
+            let updated = lookup_all().find(5);
+            assert(updated.state == DriverState.Suspended);
+        }
+        test "gc_does_not_evict_active_or_trusted_sovereign_devices" {
+            register(RegistryEntry { device_id: 6, state: DriverState.Active });
+            register(RegistryEntry { device_id: 7, state: DriverState.Suspended, trust: TrustLevel.Sovereign });
+            gc_expired(EvictionConfig { evict_after_ms: 0 }); // Attempt immediate eviction
+            assert(lookup_all().count == 2);
+        }
+        test "registry_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type RegistryEntry { device_id: U64, record: DiscoveryRecord, profile: DeviceProfile,
+                      trust: TrustLevel, state: DriverState,
+                      driver_handle: Option[DriverHandle],
+                      tombstone: Bool, assimilated_at_ms: U64,
+                      last_seen_ms: U64, miss_count: U8 }
+    type HeartbeatConfig { interval_ms: U32, max_misses: U8,
+                        transport_ping: func(Device) -> Bool }
+    type EvictionConfig { suspend_after_ms: U64, evict_after_ms: U64 }
+
+    func register(entry: RegistryEntry) -> Result {
+        budget { power: 300_nj }
+        return tg_ir.registry_insert(entry);
+    }
+
+    func lookup(device_id: U64) -> Option[RegistryEntry] {
+        budget { power: 100_nj }
+        let entry = tg_ir.registry_get(device_id);
+        if entry.is_some && entry.tombstone {
+            return Option.None;
+        }
+        return entry;
+    }
+
+    func lookup_by_address(addr: Bytes) -> Option[RegistryEntry] {
+        budget { power: 100_nj }
+        return tg_ir.registry_get_by_address(addr);
+    }
+
+    func update_state(device_id: U64, state: DriverState) -> Result {
+        budget { power: 100_nj }
+        return tg_ir.registry_update_state(device_id, state);
+    }
+
+    func tombstone(device_id: U64) -> Result {
+        budget { power: 100_nj }
+        let entry = tg_ir.registry_get(device_id);
+        entry.tombstone = true;
+        entry.state = DriverState.Evicted;
+        return tg_ir.registry_update(entry);
+    }
+
+    func fast_reactivate(device_id: U64) -> Option[DriverHandle] {
+        budget { power: 500_nj }
+        let entry = tg_ir.registry_get(device_id);
+        if entry.is_some && entry.driver_handle.is_some {
+            update_state(device_id, DriverState.Active);
+            return entry.driver_handle;
+        }
+        return Option.None;
+    }
+
+    func record_heartbeat(device_id: U64, success: Bool) -> Result {
+        budget { power: 50_nj }
+        let entry = tg_ir.registry_get(device_id);
+        if success {
+            entry.miss_count = 0;
+            entry.last_seen_ms = tg_ir.now();
+            if entry.state == DriverState.Suspended {
+                entry.state = DriverState.Active;
+            }
+        } else {
+            entry.miss_count = entry.miss_count + 1;
+            if entry.miss_count >= 5 { // Hardcoded for this logic
+                entry.state = DriverState.Suspended;
+            }
+        }
+        return tg_ir.registry_update(entry);
+    }
+
+    func gc_expired(config: EvictionConfig) -> U32 {
+        budget { power: 1000_nj }
+        return tg_ir.registry_gc(config);
+    }
+
+    func start_heartbeat_loop(device_id: U64, config: HeartbeatConfig) -> WatchHandle {
+        budget { power: 200_nj }
+        let id = tg_ir.scheduler_start_heartbeat(device_id, config);
+        return WatchHandle { id: id };
+    }
+}

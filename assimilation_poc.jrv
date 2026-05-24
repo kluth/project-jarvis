@@ -1,0 +1,68 @@
+module AssimilationPoC
+complexity O(1)
+{
+    verify {
+        test "showcase_jap_lifecycle" {
+            setup_poc_environment();
+            let discovery = DiscoveryRecord {
+                id: 0xBEEF,
+                transport: TransportType.Bluetooth_LE,
+                address: Bytes { 0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02 },
+                rssi_dbm: -45,
+                service_uuids: List[Bytes] { Bytes { 0x18, 0x12 } },
+                timestamp: tg_ir.now()
+            };
+            let record = AssimilationPipeline.run_once(discovery);
+            assert(record.device_id == 0xBEEF);
+            assert(record.profile.class == DeviceClass.Keyboard);
+            assert(tg_ir.call_count("Brain.notify") == 1);
+        }
+    }
+    func setup_poc_environment() {
+        budget { power: 1000_nj }
+        DriverSynthesizer.register_template(DriverTemplate {
+            class: DeviceClass.Keyboard,
+            ast: tg_ir.mock_template_ast("Keyboard"),
+            slots: List[TemplateSlot] { TemplateSlot { name: "address", slot_type: JrvType.Bytes } },
+            min_complexity: "O(1)",
+            max_energy_nj: 5000
+        });
+        TrustPolicy.register_rule(PolicyRule {
+            condition: func(p: DeviceProfile, c: F32) -> Bool { return p.class == DeviceClass.Keyboard; },
+            result: TrustLevel.Trusted,
+            priority: 10
+        });
+    }
+
+    verify {
+        test "demo_initialization" {
+            let handle = run_demo();
+            assert(handle.id != 0);
+            stop_demo(handle);
+        }
+    }
+    func run_demo() -> PipelineHandle {
+        budget { power: 10000_nj }
+        let config = ScanConfig {
+            transports: List[TransportType] { TransportType.Bluetooth_LE, TransportType.mDNS },
+            window_ms: 5000,
+            mode: ScanMode.Hybrid,
+            energy_cap_nj: 80000
+        };
+        return AssimilationPipeline.run_continuous(config, func(ar: AssimilationRecord) {
+            tg_ir.log("Assimilated device: ", ar.device_id);
+        });
+    }
+
+    verify {
+        test "demo_termination" {
+            let h = tg_ir.mock_pipeline_handle();
+            let res = stop_demo(h);
+            assert(res.ok);
+        }
+    }
+    func stop_demo(handle: PipelineHandle) -> Result {
+        budget { power: 100_nj }
+        return AssimilationPipeline.stop(handle);
+    }
+}

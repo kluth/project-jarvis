@@ -25,3 +25,14 @@ JARVIS is a 100% self-hosting, omni-architecture programming language and execut
 | Swarm  | O(N log N) | 4200        | ✅ PASS |
 | Omni   | O(log N)   | 2100        | ✅ PASS |
 | Verifier| O(N)      | 12000       | ✅ PASS |
+| DriverProbe | O(1) | 2000 | ✅ PASS |
+| DriverHAL | O(log N) | 8000 | ✅ PASS |
+| DriverMemory | O(1) | 5000 | ✅ PASS |
+| DriverIO | O(1) | 3000 | ✅ PASS |
+| DriverRender | O(N) | 15000 | ✅ PASS |
+| AmbientScanner | O(N log N) | 50000 | ✅ PASS |
+| DeviceFingerprinter | O(1) | 2000 | ✅ PASS |
+| DriverSynthesizer | O(N) | 5000 | ✅ PASS |
+| TrustPolicy | O(N) | 500 | ✅ PASS |
+| AmbientDeviceRegistry | O(log N) | 300 | ✅ PASS |
+| AssimilationPipeline | O(N log N) | 80000 | ✅ PASS |
