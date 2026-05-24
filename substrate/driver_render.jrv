@@ -41,6 +41,11 @@ complexity O(N)
             let buf = alloc_render_target(records.get(0), target);
             assert(buf.id != 0);
         }
+        test "dom_bridge_proof" {
+            let res = DOM_bridge_intrinsic("https://jarvis.local", "SELECT_NODE");
+            assert(res == 1);
+            assert(tg_ir.is_dom_node_bound("SELECT_NODE"));
+        }
         test "render_purity" {
             assert(tg_ir.is_native_substrate());
         }
@@ -97,5 +102,10 @@ complexity O(N)
     func alloc_render_target(device: DiscoveryRecord, target: RenderTarget) -> BufferHandle {
         budget { power: 300_nj }
         return tg_ir.hal_alloc_memory(PoolType.Device, target.width * target.height * 4, device.id);
+    }
+
+    func DOM_bridge_intrinsic(url: Stream, node_selector: Stream) -> i32 {
+        // ADR 011: Bridges the substrate to web-native DOM entities.
+        return tg_ir.hal_dom_bridge_bind(url, node_selector);
     }
 }
