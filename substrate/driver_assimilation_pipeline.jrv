@@ -66,7 +66,11 @@ complexity O(N log N) // dominated by scanner across N devices
         };
         AmbientDeviceRegistry.register(entry);
         
-        tg_ir.call("Brain.notify", ar);
+        if fp.profile.class == DeviceClass.LLM_Swarm {
+            Brain.notify_swarm_node(ar);
+        } else {
+            tg_ir.call("Brain.notify", ar);
+        }
         return ar;
     }
 
