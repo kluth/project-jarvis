@@ -1,0 +1,34 @@
+module DriverKnowledge
+complexity O(log N)
+{
+    budget { power: 5000_nj }
+
+    struct KnowledgeNode {
+        id: i32,
+        embedding: Stream,
+        metadata: Stream
+    }
+
+    verify {
+        test "semantic_query_proof" {
+            let res = query_knowledge("QUERY_VECTOR", 0.85);
+            assert(res.count >= 0);
+            assert(tg_ir.is_vector_search_active());
+        }
+        test "knowledge_ingest_proof" {
+            let node = KnowledgeNode { id: 1, embedding: "EMBEDDING", metadata: "{}" };
+            let res = ingest_knowledge(node);
+            assert(res == 1);
+        }
+    }
+
+    func query_knowledge(vector: Stream, threshold: F32) -> Stream[KnowledgeNode] {
+        // ADR 011: Queries digital KnowledgeGraph entities via semantic similarity.
+        return tg_ir.hal_knowledge_query(vector, threshold);
+    }
+
+    func ingest_knowledge(node: KnowledgeNode) -> i32 {
+        // Registers new knowledge nodes into the digital substrate memory.
+        return tg_ir.hal_knowledge_ingest(node);
+    }
+}
