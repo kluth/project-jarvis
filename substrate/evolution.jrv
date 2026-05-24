@@ -3,6 +3,11 @@ complexity O(1)
 {
     budget { power: 1000_nj }
 
+    struct EpochState {
+        current_epoch: i32,
+        active_counts: Stream
+    }
+
     struct FixPlan {
         violation: Stream,
         patch_id: i32
@@ -22,6 +27,11 @@ complexity O(1)
             assert(tg_ir.volatile_memory_read(0x1000) == n2.data);
             assert(res.data == 1);
         }
+        test "ebr_reclamation_proof" {
+            let res = ebr_reclaim(1); // Reclaim epoch 1
+            assert(res == 1);
+            assert(tg_ir.epoch_fully_quiescent(1));
+        }
         test "evolution_integrity" {
             assert(tg_ir.is_wait_free_substrate());
         }
@@ -29,10 +39,15 @@ complexity O(1)
 
     func swap(current: Node, next: Node) -> Node {
         // RCU/Atomic Swap Simulation in JARVIS
-        // In the pure substrate, this maps to the AtomicPtr::swap primitive
-        
+        // Transition to next epoch and swap pointer
+        tg_ir.increment_epoch();
         volatile write(0x1000, next.data);
         return next;
+    }
+
+    func ebr_reclaim(epoch: i32) -> i32 {
+        // ADR 0008: Safe memory reclamation after all nodes exit the target epoch.
+        return tg_ir.ebr_reclaim_epoch(epoch);
     }
 
     func verify_node(node: Node) -> i32 {
