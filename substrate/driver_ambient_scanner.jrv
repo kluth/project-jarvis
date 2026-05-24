@@ -20,6 +20,15 @@ complexity O(N log N)
             let records = scan_proc_arp();
             assert(records.count > 0);
         }
+        test "mcp_discovery_proof" {
+            let records = scan_mcp_servers();
+            assert(tg_ir.is_mcp_active());
+        }
+        test "path_discovery_proof" {
+            let records = scan_path();
+            assert(records.count > 0);
+            assert(tg_ir.is_tool_discovered("git"));
+        }
         test "full_discovery_scan" {
             let s = scan_all();
             assert(s.count > 0);
@@ -99,12 +108,26 @@ complexity O(N log N)
         return results;
     }
 
+    func scan_mcp_servers() -> List[DiscoveryRecord] {
+        budget { power: 2500_nj }
+        // ADR 011: Discovers running MCP endpoints via substrate inspection
+        return tg_ir.discover_mcp_endpoints();
+    }
+
+    func scan_path() -> List[DiscoveryRecord] {
+        budget { power: 2000_nj }
+        // ADR 011: Discovers system tools as digital devices
+        return tg_ir.scan_system_path();
+    }
+
     func scan_all() -> Stream[DiscoveryRecord] {
         budget { power: 15000_nj }
         let s = tg_ir.create_stream();
         s.append_all(scan_sysfs_pci());
         s.append_all(scan_sysfs_usb());
         s.append_all(scan_proc_arp());
+        s.append_all(scan_mcp_servers());
+        s.append_all(scan_path());
         return s;
     }
 }
