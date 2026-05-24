@@ -11,6 +11,8 @@ complexity O(1)
         MUL: i32,
         STREAM_MAP: i32,
         COMM_SYNC: i32,
+        PROB_JUMP: i32,
+        SUPERPOSE: i32,
         HALT: i32
     }
 
@@ -23,6 +25,8 @@ complexity O(1)
         test "ir_purity_proof" {
             let ops = init_opcodes();
             assert(ops.HALT == 0);
+            assert(ops.PROB_JUMP == 8);
+            assert(ops.SUPERPOSE == 9);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -35,6 +39,8 @@ complexity O(1)
             MUL: 5,
             STREAM_MAP: 6,
             COMM_SYNC: 7,
+            PROB_JUMP: 8,
+            SUPERPOSE: 9,
             HALT: 0
         };
     }
