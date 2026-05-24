@@ -41,4 +41,10 @@ complexity O(N)
         let magic = 0xE85250D6;
         return "MULTIBOOT_HEADER_STUB";
     }
+
+    func emit_boot_sector(code: Stream) -> Stream {
+        // Enforces exactly 512-byte boot sector layout.
+        // The last 2 bytes MUST be the boot signature 0xAA55.
+        return tg_ir.pad_and_sign_sector(code, 512, 0xAA55);
+    }
 }

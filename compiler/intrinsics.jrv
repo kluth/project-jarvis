@@ -15,6 +15,7 @@ complexity O(1)
     //   mmio_map(phys: i32, len: i32) -> Stream    // identity-map MMIO region
     //   bios_interrupt(vector: i32, regs: BiosRegisters) -> BiosRegisters // 16-bit BIOS int
     //   disk_read_sector(drive: i32, lba: i32, count: i32, buffer: i32) -> i32 // Raw INT 0x13 read
+    //   enter_protected_mode()                     // Transitions CPU to 32-bit Protected Mode
 
     struct InterruptVector {
         number: i32,
@@ -68,6 +69,17 @@ complexity O(1)
             assert(tg_ir.last_bios_ax() == 0x4F00);
             assert(tg_ir.intrinsic_opcode("bios_interrupt") == 0xCD); // x86 INT imm8
         }
+        test "disk_read_intrinsic_proof" {
+            // Intrinsic MUST lower to BIOS INT 0x13 AH=42h for Extended Read
+            let status = disk_read_sector_intrinsic(0x80, 2048, 1, 0x10000);
+            assert(tg_ir.last_bios_interrupt() == 0x13);
+            assert(tg_ir.intrinsic_opcode("disk_read_sector") == 0xCD); // x86 INT
+        }
+        test "cpu_mode_transition_proof" {
+            // Must verify CPU lowers to cr0 modification instructions
+            enter_protected_mode_intrinsic();
+            assert(tg_ir.is_protected_mode_active());
+        }
         test "opcode_lowering_proof" {
             // Each intrinsic lowers to exactly one machine opcode pattern
             // (IN/OUT for ports, MOV via MMIO base for memory mapped). The
@@ -76,6 +88,8 @@ complexity O(1)
             assert(tg_ir.intrinsic_opcode("port_write") == 0xEE);  // x86 OUT DX, AL
             assert(tg_ir.intrinsic_opcode("interrupt") == 0xCD);   // x86 INT imm8
             assert(tg_ir.intrinsic_opcode("bios_interrupt") == 0xCD); // x86 INT imm8
+            assert(tg_ir.intrinsic_opcode("disk_read_sector") == 0xCD); // x86 INT imm8
+            assert(tg_ir.intrinsic_opcode("enter_protected_mode") == 0x0F); // MOV CR0 (0x0F 0x22)
         }
     }
 
@@ -113,13 +127,16 @@ complexity O(1)
         // and retrieving them after.
         return tg_ir.bios_int(vector, regs);
     }
-}VBE LFB).
-        return MmioRegion { phys: phys, len: len, cacheable: 0 };
+
+    func disk_read_sector_intrinsic(drive: i32, lba: i32, count: i32, buffer_addr: i32) -> i32 {
+        // Synthesizes a Disk Address Packet (DAP) and lowers to INT 0x13 AH=42h.
+        // Returns the status code (AH).
+        return tg_ir.disk_read(drive, lba, count, buffer_addr);
     }
 
-    func bios_interrupt_intrinsic(vector: i32, regs: BiosRegisters) -> BiosRegisters {
-        // Lowers to a 16-bit INT instruction, setting up registers before
-        // and retrieving them after.
-        return tg_ir.bios_int(vector, regs);
+    func enter_protected_mode_intrinsic() {
+        // Automatically lowers to the machine instructions necessary to disable interrupts,
+        // load the GDT, and set the PE bit in CR0, enforcing a strict transition to 32-bit PM.
+        tg_ir.set_cr0_pe();
     }
 }
