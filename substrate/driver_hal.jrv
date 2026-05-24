@@ -1,0 +1,42 @@
+module DriverHAL
+complexity O(log N)
+{
+    verify {
+        test "digital_bind_proof" {
+            let dev = tg_ir.mock_device("MCP_Stdio", 0x1);
+            let manifest = DriverManifest { module_id: 0x88, supported_classes: List[DeviceClass] { DeviceClass.Tool_MCP } };
+            let res = bind_driver(dev, manifest);
+            assert(res.ok);
+        }
+        test "hal_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type BusType { MCP_Stdio | MCP_SSE | REST_API | GraphQL | Shell_IPC | WebSocket | gRPC | Custom }
+    type DriverState { Unbound | Probing | Binding | Active | Suspended | Tombstoned }
+    type Device { id: U64, bus: BusType, endpoint: Str, capabilities: Capability, state: DriverState }
+    type DeviceClass { LLM_Swarm | WebBrowser | CodeRepository | Database | KnowledgeGraph | Tool_MCP | Unknown }
+    type DriverManifest { module_id: U64, supported_classes: List[DeviceClass], trust_required: TrustLevel }
+
+    func bind_driver(device: Device, drv: DriverManifest) -> Result {
+        budget { power: 1000_nj }
+        return tg_ir.hal_bind_digital(device, drv);
+    }
+
+    func unbind_driver(device: Device) -> Result {
+        budget { power: 500_nj }
+        device.state = DriverState.Unbound;
+        return tg_ir.hal_unbind_digital(device);
+    }
+
+    func enumerate_entities() -> DeviceList {
+        budget { power: 2000_nj }
+        return tg_ir.hal_enumerate_digital();
+    }
+
+    func get_entity_by_class(class: DeviceClass) -> DeviceList {
+        budget { power: 200_nj }
+        return tg_ir.hal_get_by_class_digital(class);
+    }
+}

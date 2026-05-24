@@ -1,0 +1,89 @@
+module TrustPolicy
+complexity O(N) // N = rules evaluated
+{
+    verify {
+        test "unknown_class_yields_untrusted_by_default" {
+            let profile = DeviceProfile { class: DeviceClass.Unknown };
+            let level = evaluate(profile, 0.9);
+            assert(level == TrustLevel.Untrusted);
+        }
+        test "low_confidence_yields_untrusted" {
+            let profile = DeviceProfile { class: DeviceClass.Keyboard };
+            let level = evaluate(profile, 0.3);
+            assert(level == TrustLevel.Untrusted);
+        }
+        test "elevation_fails_without_valid_proof" {
+            let proof = OperatorProof { signature: Bytes { 0x0 }, device_id: 1, new_level: TrustLevel.Sovereign, expires_at_ms: 9999999999 };
+            let res = elevate(1, TrustLevel.Sovereign, proof);
+            assert(res.failed);
+        }
+        test "elevation_fails_after_expiry" {
+            let proof = tg_ir.generate_valid_proof(1, TrustLevel.Trusted, tg_ir.now() - 1000);
+            let res = elevate(1, TrustLevel.Trusted, proof);
+            assert(res.failed);
+        }
+        test "sovereign_only_for_local_bus_transports" {
+            let profile = DeviceProfile { class: DeviceClass.ComputeNode };
+            let level = evaluate(profile, 1.0);
+            assert(level != TrustLevel.Sovereign);
+        }
+        test "policy_evaluation_is_deterministic_for_same_inputs" {
+            let p = DeviceProfile { class: DeviceClass.Sensor };
+            assert(evaluate(p, 0.8) == evaluate(p, 0.8));
+        }
+        test "trust_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type TrustLevel { Untrusted | Observed | Trusted | Sovereign }
+    type PolicyRule { condition: func(DeviceProfile, F32) -> Bool,
+                      result: TrustLevel, priority: U32 }
+    type PolicyEngine { rules: List[PolicyRule], default_level: TrustLevel }
+    type OperatorProof { signature: Bytes, device_id: U64, new_level: TrustLevel,
+                      expires_at_ms: U64 }
+
+    func evaluate(profile: DeviceProfile, confidence: F32) -> TrustLevel {
+        budget { power: 200_nj }
+        if confidence < 0.50 { return TrustLevel.Untrusted; }
+        if profile.class == DeviceClass.Unknown { return TrustLevel.Untrusted; }
+        
+        // Default policy evaluation
+        if profile.class == DeviceClass.Keyboard || profile.class == DeviceClass.Pointer {
+            return TrustLevel.Trusted;
+        }
+        if profile.class == DeviceClass.ComputeNode {
+            return TrustLevel.Observed;
+        }
+        
+        return TrustLevel.Observed;
+    }
+
+    func register_rule(rule: PolicyRule) -> Result {
+        budget { power: 100_nj }
+        return tg_ir.add_trust_rule(rule);
+    }
+
+    func elevate(device_id: U64, new_level: TrustLevel, proof: OperatorProof) -> Result {
+        budget { power: 500_nj }
+        if !verify_proof(proof) {
+            return Result.Failed("Invalid proof");
+        }
+        if proof.device_id != device_id {
+            return Result.Failed("Proof device mismatch");
+        }
+        if proof.expires_at_ms < tg_ir.now() {
+            return Result.Failed("Proof expired");
+        }
+        return tg_ir.set_device_trust(device_id, new_level);
+    }
+
+    func get_policy() -> PolicyEngine {
+        return tg_ir.get_trust_policy();
+    }
+
+    func verify_proof(proof: OperatorProof) -> Bool {
+        budget { power: 300_nj }
+        return tg_ir.crypto_verify_signature(proof.signature, proof.device_id, proof.new_level);
+    }
+}

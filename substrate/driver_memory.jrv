@@ -1,0 +1,91 @@
+module DriverMemory
+complexity O(1) // SharedPool; O(log N) DevicePool
+{
+    verify {
+        test "no_double_free" {
+            let dev = tg_ir.mock_device("PCIe", 0x1);
+            let buf = alloc(PoolType.Shared, 4096, dev);
+            free(buf);
+            let res = free(buf);
+            assert(res.failed);
+        }
+        test "no_leak_after_driver_unbind" {
+            let dev_id = 0xABC;
+            let dev = tg_ir.mock_device_with_id(dev_id);
+            alloc(PoolType.Shared, 1024, dev);
+            alloc(PoolType.Device, 2048, dev);
+            let freed = release_all_for_device(dev_id);
+            assert(freed == 2);
+        }
+        test "free_after_alloc_reduces_pool_usage" {
+            let dev = tg_ir.mock_device("USB", 0x2);
+            let initial = tg_ir.get_pool_usage(PoolType.Shared);
+            let buf = alloc(PoolType.Shared, 1024, dev);
+            assert(tg_ir.get_pool_usage(PoolType.Shared) > initial);
+            free(buf);
+            assert(tg_ir.get_pool_usage(PoolType.Shared) == initial);
+        }
+        test "migration_preserves_buffer_contents" {
+            let dev = tg_ir.mock_device("PCIe", 0x3);
+            let buf = alloc(PoolType.Shared, 1024, dev);
+            tg_ir.mem_write(buf.virt_addr, 0xDEADBEEF);
+            migrate(buf, PoolType.Device, MigrationPolicy.Eager);
+            assert(tg_ir.mem_read(buf.virt_addr) == 0xDEADBEEF);
+        }
+        test "map_after_free_returns_error" {
+            let dev = tg_ir.mock_device("PCIe", 0x4);
+            let buf = alloc(PoolType.Shared, 1024, dev);
+            free(buf);
+            let res = map_to_device(buf, dev);
+            assert(res.failed);
+        }
+        test "alloc_within_energy_budget" {
+            let dev = tg_ir.mock_device("PCIe", 0x5);
+            let start = tg_ir.energy_consumed();
+            alloc(PoolType.Shared, 1024, dev);
+            let cost = tg_ir.energy_consumed() - start;
+            assert(cost <= 200);
+        }
+        test "memory_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type PoolType { Shared | Device }
+    type BufferHandle { id: U64, size_bytes: U64, pool: PoolType,
+                        device_id: U64, virt_addr: U64 }
+    type MigrationPolicy { Lazy | Eager | Never }
+    type VirtAddr { addr: U64 }
+
+    func alloc(pool: PoolType, size_bytes: U64, device: Device) -> BufferHandle {
+        budget { power: 200_nj }
+        let handle = tg_ir.hal_alloc_memory(pool, size_bytes, device.id);
+        return handle;
+    }
+
+    func free(handle: BufferHandle) -> Result {
+        budget { power: 100_nj }
+        return tg_ir.hal_free_memory(handle);
+    }
+
+    func migrate(handle: BufferHandle, target: PoolType, policy: MigrationPolicy) -> Result {
+        budget { power: 400_nj }
+        return tg_ir.hal_migrate_memory(handle, target, policy);
+    }
+
+    func map_to_device(handle: BufferHandle, device: Device) -> VirtAddr {
+        budget { power: 300_nj }
+        let addr = tg_ir.hal_map_memory(handle, device.id);
+        return VirtAddr { addr: addr };
+    }
+
+    func unmap(handle: BufferHandle) -> Result {
+        budget { power: 100_nj }
+        return tg_ir.hal_unmap_memory(handle);
+    }
+
+    func release_all_for_device(device_id: U64) -> U32 {
+        budget { power: 500_nj }
+        return tg_ir.hal_release_device_memory(device_id);
+    }
+}

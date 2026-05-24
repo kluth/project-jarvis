@@ -1,0 +1,69 @@
+module HardwareAssimilationPoC
+complexity O(1)
+{
+    verify {
+        test "deep_hardware_demo" {
+            // RUTHLESS: Verify that we find and fingerprint a real PCIe device
+            let records = AmbientScanner.scan_sysfs_pci();
+            assert(records.count > 0);
+            
+            let target = records.get(0);
+            let ar = AssimilationPipeline.run_once(target);
+            assert(ar.state == DriverState.Active);
+        }
+        test "neighborhood_assimilation" {
+            // RUTHLESS: Verify that we find and fingerprint a real network neighbor
+            let records = AmbientScanner.scan_proc_arp();
+            if records.count > 0 {
+                let ar = AssimilationPipeline.run_once(records.get(0));
+                assert(ar.state == DriverState.Active);
+            }
+        }
+        test "poc_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    func main() {
+        print("--- JARVIS: DEEP HARDWARE ASSIMILATION POC ---\n", 0, 0, 0);
+        print("Objective: Discover and Bind to Real Physical & Neighborhood Nodes\n\n", 0, 0, 0);
+        
+        // 1. PCIe Discovery
+        let pci_records = AmbientScanner.scan_sysfs_pci();
+        print("[JAP] Stage 1 (PCIe): Discovered ", pci_records.count, " nodes in sysfs.\n", 0);
+        
+        for r in pci_records {
+            let fp = DeviceFingerprinter.fingerprint(r);
+            if fp.confidence > 0.9 {
+                 print("  -> Found: ", r.endpoint, " (", r.raw_capabilities, ") -> ", 0);
+                 print(tg_ir.to_string(fp.profile.class), " (", 0, 0);
+                 print(fp.profile.manufacturer, ")\n", 0, 0);
+                 
+                 // Assimilate one
+                 let ar = AssimilationPipeline.run_once(r);
+                 print("     [STATE] ", tg_ir.to_string(ar.state), " (TRUST: ", 0);
+                 print(tg_ir.to_string(ar.trust), ")\n", 0, 0);
+            }
+        }
+        
+        // 2. Neighborhood Discovery
+        print("\n[JAP] Stage 1 (Neighborhood): Reading /proc/net/arp...\n", 0, 0, 0);
+        let neighbors = AmbientScanner.scan_proc_arp();
+        print("[JAP] Neighborhood: Found ", neighbors.count, " active entities.\n", 0);
+        
+        for n in neighbors {
+            let fp = DeviceFingerprinter.fingerprint(n);
+            print("  -> Detected Neighbor: ", n.endpoint, " (MAC: ", 0);
+            print(n.raw_capabilities, ") -> ", 0, 0);
+            print(tg_ir.to_string(fp.profile.class), " (Confidence: ", 0, 0);
+            print(fp.confidence, ")\n", 0, 0);
+            
+            // Assimilate
+            let ar = AssimilationPipeline.run_once(n);
+            print("     [STATE] ", tg_ir.to_string(ar.state), " (TRUST: ", 0);
+            print(tg_ir.to_string(ar.trust), ")\n", 0, 0);
+        }
+        
+        print("\n--- DEEP ASSIMILATION POC COMPLETE: 100% REAL DATA ---\n", 0, 0, 0);
+    }
+}

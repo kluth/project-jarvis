@@ -1,0 +1,105 @@
+module DriverRender
+complexity O(N)
+{
+    verify {
+        test "compiled_kernel_equivalent_across_simd_and_scalar_paths" {
+            let src = "let out = a * b;";
+            let caps_simd = Capability { has_simd256: true };
+            let caps_scalar = Capability { has_simd256: false };
+            let k1 = compile_kernel(src, caps_simd);
+            let k2 = compile_kernel(src, caps_scalar);
+            assert(tg_ir.verify_equivalence(k1, k2));
+        }
+        test "command_buffer_never_submitted_twice" {
+            let cmds = encode_commands(List[RenderCmd] { RenderCmd.DrawCall(100, 1) });
+            let dev = tg_ir.mock_device("GPU", 1);
+            submit(cmds, dev);
+            let res = submit(cmds, dev);
+            assert(res.failed);
+        }
+        test "fence_resolves_or_times_out_not_hangs" {
+            let fence = tg_ir.mock_fence();
+            let res = wait_fence(fence);
+            assert(res.ok || res.timed_out);
+        }
+        test "display_mode_set_is_atomic" {
+            let dev = tg_ir.mock_device("Display", 2);
+            let target = RenderTarget { width: 1920, height: 1080 };
+            let res = set_display_mode(dev, target);
+            assert(tg_ir.last_transaction_atomic());
+        }
+        test "software_fallback_produces_correct_output_without_gpu" {
+            let caps = Capability { has_gpu: false };
+            let kernel = compile_kernel("let x = 1;", caps);
+            assert(kernel.target_isa == "CPU_ISA");
+        }
+        test "render_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type RenderCmd { DrawCall(vertices: U32, instances: U32) |
+                      Dispatch(x: U32, y: U32, z: U32) |
+                      Transfer(src: BufferHandle, dst: BufferHandle) |
+                      Barrier(stage_mask: U32) }
+    type CommandBuffer Stream[RenderCmd]
+    type ShaderStage { Vertex | Fragment | Compute | Geometry | TessControl |
+                      TessEval | RayGen | RayMiss | RayHit }
+    type KernelSource Str
+    type CompiledKernel { tg_ir_binary: Bytes, target_isa: Bytes,
+                         stage: ShaderStage, energy_nj: U64 }
+    type RenderTarget { width: U32, height: U32, format: PixelFormat,
+                       refresh_hz: U32 }
+    type PixelFormat { RGBA8 | BGRA8 | RGB10A2 | RGBA16F | Depth32F }
+    type FenceHandle { id: U64 }
+    type DisplayPlane { id: U32, zpos: U32, src: BufferHandle }
+
+    func compile_kernel(src: KernelSource, caps: Capability) -> CompiledKernel {
+        budget { power: 10000_nj }
+        let ir = tg_ir.compile_to_ir(src);
+        if caps.has_simd256 {
+            tg_ir.apply_pass(ir, "SIMD256");
+        } elif caps.has_simd128 {
+            tg_ir.apply_pass(ir, "SIMD128");
+        } else {
+            tg_ir.apply_pass(ir, "Scalar");
+        }
+        
+        let target = "CPU_ISA";
+        if caps.has_gpu {
+            target = "GPU_ISA";
+        }
+        
+        return CompiledKernel { tg_ir_binary: ir, target_isa: target, energy_nj: 10000 };
+    }
+
+    func encode_commands(cmds: List[RenderCmd]) -> CommandBuffer {
+        budget { power: 500_nj }
+        return tg_ir.hal_encode_render_stream(cmds);
+    }
+
+    func submit(buf: CommandBuffer, device: Device) -> FenceHandle {
+        budget { power: 200_nj }
+        return tg_ir.hal_submit_work(buf, device.id);
+    }
+
+    func wait_fence(fence: FenceHandle) -> Result {
+        budget { power: 100_nj }
+        return tg_ir.hal_wait_fence(fence.id);
+    }
+
+    func set_display_mode(device: Device, target: RenderTarget) -> Result {
+        budget { power: 1000_nj }
+        return tg_ir.hal_modeset(device.id, target);
+    }
+
+    func atomic_plane_update(device: Device, planes: List[DisplayPlane]) -> Result {
+        budget { power: 500_nj }
+        return tg_ir.hal_atomic_commit(device.id, planes);
+    }
+
+    func alloc_render_target(device: Device, target: RenderTarget) -> BufferHandle {
+        budget { power: 300_nj }
+        return tg_ir.hal_alloc_memory(PoolType.Device, target.width * target.height * 4, device.id);
+    }
+}

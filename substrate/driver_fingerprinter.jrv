@@ -1,0 +1,50 @@
+module DeviceFingerprinter
+complexity O(1) // amortized
+{
+    verify {
+        test "fingerprint_pci_virtio" {
+            // RUTHLESS: Verify VirtIO Network Adapter (0x1af4:0x1041)
+            let record = DiscoveryRecord { id: 1, transport: BusType.PCIe, endpoint: "0000:00:07.0", confidence: 1.0, raw_capabilities: "0x1af4:0x1041", timestamp: 0 };
+            let result = fingerprint(record);
+            assert(result.profile.class == DeviceClass.NetworkAdapter);
+        }
+        test "fingerprint_pci_audio" {
+            // RUTHLESS: Verify VirtIO Audio (0x1af4:0x1059)
+            let record = DiscoveryRecord { id: 2, transport: BusType.PCIe, endpoint: "0000:00:08.0", confidence: 1.0, raw_capabilities: "0x1af4:0x1059", timestamp: 0 };
+            let result = fingerprint(record);
+            assert(result.profile.class == DeviceClass.AudioOut);
+        }
+        test(tg_ir.is_native_substrate());
+    }
+
+    func fingerprint(record: DiscoveryRecord) -> FingerprintResult {
+        budget { power: 1000_nj }
+        
+        // RUTHLESS: PCIe Raw ID matching
+        if record.transport == BusType.PCIe {
+            if tg_ir.string_contains(record.raw_capabilities, "0x1af4:0x1041") {
+                return FingerprintResult { profile: DeviceProfile { class: DeviceClass.NetworkAdapter, manufacturer: "VirtIO", model: "Net" }, confidence: 1.0, stage_used: FingerprintStage.FunctionalProbe };
+            }
+            if tg_ir.string_contains(record.raw_capabilities, "0x1af4:0x1042") {
+                return FingerprintResult { profile: DeviceProfile { class: DeviceClass.Storage, manufacturer: "VirtIO", model: "Block" }, confidence: 1.0, stage_used: FingerprintStage.FunctionalProbe };
+            }
+            if tg_ir.string_contains(record.raw_capabilities, "0x1af4:0x1059") {
+                return FingerprintResult { profile: DeviceProfile { class: DeviceClass.AudioOut, manufacturer: "VirtIO", model: "Sound" }, confidence: 1.0, stage_used: FingerprintStage.FunctionalProbe };
+            }
+            if tg_ir.string_contains(record.raw_capabilities, "0x8086:0x1237") {
+                return FingerprintResult { profile: DeviceProfile { class: DeviceClass.Unknown, manufacturer: "Intel", model: "Bridge" }, confidence: 1.0, stage_used: FingerprintStage.FunctionalProbe };
+            }
+        }
+
+        // RUTHLESS: ARP Neighborhood Fingerprinting (based on MAC OUI)
+        if tg_ir.string_contains(record.raw_capabilities, "3e:24:d9") {
+             return FingerprintResult { profile: DeviceProfile { class: DeviceClass.LLM_Swarm, manufacturer: "Google", model: "CloudNode" }, confidence: 0.9, stage_used: FingerprintStage.ProfileMatch };
+        }
+        
+        return FingerprintResult { 
+            profile: DeviceProfile { class: DeviceClass.Unknown }, 
+            confidence: 0.1, 
+            stage_used: FingerprintStage.BehavioralAnalysis 
+        };
+    }
+}

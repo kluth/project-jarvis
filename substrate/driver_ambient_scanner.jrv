@@ -1,0 +1,102 @@
+module AmbientScanner
+complexity O(N log N)
+{
+    verify {
+        test "deep_pci_scan" {
+            // RUTHLESS: Verify that we find the VirtIO PCI bridge (0x1af4)
+            let records = scan_sysfs_pci();
+            let found_virtio = false;
+            for r in records {
+                if tg_ir.string_contains(r.raw_capabilities, "1af4") { found_virtio = true; }
+            }
+            assert(found_virtio);
+        }
+        test "neighborhood_scan" {
+            // RUTHLESS: Verify that ARP neighborhood is discovered
+            let records = scan_proc_arp();
+            assert(records.count > 0);
+        }
+        test "scanner_purity" {
+            assert(tg_ir.is_native_substrate());
+        }
+    }
+
+    type DiscoveryRecord { id: U64, transport: BusType, endpoint: Str, class: DeviceClass, confidence: F32, raw_capabilities: Str, timestamp: U64 }
+
+    func scan_sysfs_pci() -> List[DiscoveryRecord] {
+        budget { power: 3000_nj }
+        // RUTHLESS: Direct traversal of /sys/bus/pci/devices/
+        let devices = tg_ir.read_dir("/sys/bus/pci/devices/");
+        let results = List[DiscoveryRecord] { };
+        
+        for dev in devices {
+            let vendor = tg_ir.read_file("/sys/bus/pci/devices/" + dev + "/vendor");
+            let device = tg_ir.read_file("/sys/bus/pci/devices/" + dev + "/device");
+            
+            results.append(DiscoveryRecord {
+                id: tg_ir.hash_u64(dev),
+                transport: BusType.PCIe,
+                endpoint: dev,
+                class: DeviceClass.Unknown,
+                confidence: 1.0,
+                raw_capabilities: vendor + ":" + device,
+                timestamp: tg_ir.now()
+            });
+        }
+        return results;
+    }
+
+    func scan_sysfs_usb() -> List[DiscoveryRecord] {
+        budget { power: 2000_nj }
+        // RUTHLESS: Direct traversal of /sys/bus/usb/devices/
+        let devices = tg_ir.read_dir("/sys/bus/usb/devices/");
+        let results = List[DiscoveryRecord] { };
+        
+        for dev in devices {
+            results.append(DiscoveryRecord {
+                id: tg_ir.hash_u64(dev),
+                transport: BusType.USB,
+                endpoint: dev,
+                class: DeviceClass.Unknown,
+                confidence: 1.0,
+                raw_capabilities: "USB_NODE",
+                timestamp: tg_ir.now()
+            });
+        }
+        return results;
+    }
+
+    func scan_proc_arp() -> List[DiscoveryRecord] {
+        budget { power: 1500_nj }
+        // RUTHLESS: Read /proc/net/arp to find physical neighbors
+        let arp_data = tg_ir.read_file("/proc/net/arp");
+        let lines = tg_ir.string_split(arp_data, "\n");
+        let results = List[DiscoveryRecord] { };
+        
+        for i in 1..lines.count { // Skip header
+            let line = lines.get(i);
+            if line == "" { continue; }
+            let parts = tg_ir.string_split_whitespace(line);
+            
+            results.append(DiscoveryRecord {
+                id: tg_ir.hash_u64(parts.get(0)), // IP Address
+                transport: BusType.WebSocket, // Logical transport for neighbors
+                endpoint: parts.get(0),
+                class: DeviceClass.LLM_Swarm, // Potential cognitive nodes
+                confidence: 0.7,
+                raw_capabilities: parts.get(3), // HW Address
+                timestamp: tg_ir.now()
+            });
+        }
+        return results;
+    }
+
+    func scan_all() -> Stream[DiscoveryRecord] {
+        budget { power: 15000_nj }
+        let s = tg_ir.create_stream();
+        s.append_all(scan_sysfs_pci());
+        s.append_all(scan_sysfs_usb());
+        s.append_all(scan_proc_arp());
+        return s;
+    }
+}
