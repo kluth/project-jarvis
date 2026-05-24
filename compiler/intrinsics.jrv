@@ -4,6 +4,7 @@ complexity O(1)
     budget { power: 200_nj }
 
     // Resolves ISSUE #14 — Standardized HAL Intrinsics.
+    // Resolves ISSUE #26 — Native BIOS Interrupt Intrinsics.
     // Replaces raw `asm` blocks for interrupt mapping and MMIO with first-class
     // language primitives that lower directly to machine opcodes (O(1) each).
     //
@@ -12,6 +13,7 @@ complexity O(1)
     //   port_read(port: i32) -> i32                // x86 IN
     //   port_write(port: i32, value: i32)          // x86 OUT
     //   mmio_map(phys: i32, len: i32) -> Stream    // identity-map MMIO region
+    //   bios_interrupt(vector: i32, regs: BiosRegisters) -> BiosRegisters // 16-bit BIOS int
 
     struct InterruptVector {
         number: i32,
@@ -23,6 +25,15 @@ complexity O(1)
         phys: i32,
         len: i32,
         cacheable: i32
+    }
+
+    struct BiosRegisters {
+        ax: i32,
+        bx: i32,
+        cx: i32,
+        dx: i32,
+        si: i32,
+        di: i32
     }
 
     verify {
@@ -48,6 +59,14 @@ complexity O(1)
             assert(tg_ir.mmio_identity_mapped(0xFEE00000, 4096));
             assert(r.cacheable == 0);
         }
+        test "bios_interrupt_intrinsic_proof" {
+            // Intrinsic MUST lower to an INT call with appropriate register setup.
+            let regs = BiosRegisters { ax: 0x4F00, bx: 0, cx: 0, dx: 0, si: 0, di: 0x1000 };
+            let out_regs = bios_interrupt_intrinsic(0x10, regs);
+            assert(tg_ir.last_bios_interrupt() == 0x10);
+            assert(tg_ir.last_bios_ax() == 0x4F00);
+            assert(tg_ir.intrinsic_opcode("bios_interrupt") == 0xCD); // x86 INT imm8
+        }
         test "opcode_lowering_proof" {
             // Each intrinsic lowers to exactly one machine opcode pattern
             // (IN/OUT for ports, MOV via MMIO base for memory mapped). The
@@ -55,6 +74,7 @@ complexity O(1)
             assert(tg_ir.intrinsic_opcode("port_read") == 0xEC);   // x86 IN AL, DX
             assert(tg_ir.intrinsic_opcode("port_write") == 0xEE);  // x86 OUT DX, AL
             assert(tg_ir.intrinsic_opcode("interrupt") == 0xCD);   // x86 INT imm8
+            assert(tg_ir.intrinsic_opcode("bios_interrupt") == 0xCD); // x86 INT imm8
         }
     }
 
@@ -85,5 +105,11 @@ complexity O(1)
         // Identity-maps `len` bytes at `phys` with cache disabled, suitable
         // for memory-mapped device registers (LAPIC, HPET, VBE LFB).
         return MmioRegion { phys: phys, len: len, cacheable: 0 };
+    }
+
+    func bios_interrupt_intrinsic(vector: i32, regs: BiosRegisters) -> BiosRegisters {
+        // Lowers to a 16-bit INT instruction, setting up registers before
+        // and retrieving them after.
+        return tg_ir.bios_int(vector, regs);
     }
 }
