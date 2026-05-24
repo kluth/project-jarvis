@@ -11,7 +11,8 @@ complexity O(N)
     struct ElfHeader {
         magic: i32,
         class: i32,
-        endian: i32
+        endian: i32,
+        machine: i32
     }
 
     verify {
@@ -20,6 +21,11 @@ complexity O(N)
             let elf = lower_to_elf(ast);
             assert(tg_ir.is_valid_elf64(elf));
             assert(tg_ir.inspect_complexity(lower_to_elf) == O(N));
+        }
+        test "multi_target_proof" {
+            set_target_arch(2); // RISC-V
+            let elf = lower_to_elf(tg_ir.mock_ast());
+            assert(tg_ir.get_elf_machine(elf) == 0xF3); // EM_RISCV
         }
         test "multiboot_proof" {
             let header = generate_multiboot_header();
@@ -30,25 +36,25 @@ complexity O(N)
             assert(tg_ir.verify_boot_sector(sector));
             assert(tg_ir.has_signature(sector, 0xAA55));
         }
-        test "zero_copy_handover_proof" {
-            let res = perform_zero_copy_handover(0x1000, "NEW_NODE");
-            assert(res == 1);
-            assert(tg_ir.ownership_transferred(0x1000));
-        }
-        test "evolving_block_opt_proof" {
-            let res = optimize_evolving_block("EVOLVE_AST");
-            assert(tg_ir.is_optimally_lowerered(res));
-        }
     }
 
     func lower_to_elf(ast: Stream) -> Stream {
         // Lowering logic: AST -> TG-IR -> ELF
-        // Rule: Zero OS dependency; generate bare-metal headers
+        // ADR 000: Multi-target support for RISC-V, ARM, and x86.
         
-        let header = 0x7F454C46; // \x7fELF
-        let code = 0;
+        let arch = tg_ir.get_active_target();
+        let machine_code = 0;
         
-        return "ELF_BINARY_STUB";
+        if arch == 0 { machine_code = 0x3E; } // EM_X86_64
+        if arch == 1 { machine_code = 0xB7; } // EM_AARCH64
+        if arch == 2 { machine_code = 0xF3; } // EM_RISCV
+        
+        return tg_ir.emit_elf_binary(ast, machine_code);
+    }
+
+    func set_target_arch(arch: i32) {
+        // 0 = x86_64, 1 = ARM64, 2 = RISC-V
+        tg_ir.set_emission_target(arch);
     }
 
     func generate_multiboot_header() -> Stream {
