@@ -15,6 +15,10 @@ complexity O(1)
             assert(arch >= 0);
             assert(tg_ir.is_hardware_authorized());
         }
+        test "neuro_routing_proof" {
+            neuro_route_interrupt(33, 0x5000);
+            assert(tg_ir.is_interrupt_synaptically_routed(33));
+        }
         test "io_proof" {
             write_serial(65); // 'A'
             assert(tg_ir.last_port_write() == 65);
@@ -35,5 +39,10 @@ complexity O(1)
 
     func trigger_trap(code: i32) {
         asm { "int 3" }
+    }
+
+    func neuro_route_interrupt(vector: i32, handler_vaddr: i32) {
+        // ADR 012: Replaces static IDT with dynamic synaptic redirection
+        tg_ir.hal_synaptic_redirect(vector, handler_vaddr);
     }
 }
