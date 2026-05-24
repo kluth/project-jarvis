@@ -25,6 +25,11 @@ complexity O(N)
             let plan = get_fix_plan("PDD_VIOLATION");
             assert(tg_ir.is_valid_json_plan(plan));
         }
+        test "ast_delta_plan_proof" {
+            let plan = generate_ast_delta_plan("PDD_VIOLATION", "OLD_AST");
+            assert(tg_ir.has_ast_deltas(plan));
+            assert(tg_ir.is_pre_verified_fix(plan));
+        }
     }
 
     func dispatch_request(req: McpRequest) -> Stream {
@@ -39,5 +44,10 @@ complexity O(N)
         // Autonomous Fix Plan Generation (Rev 6.0)
         let plan = "{ 'action': 'patch' }";
         return plan;
+    }
+
+    func generate_ast_delta_plan(violation: Stream, current_ast: Stream) -> Stream {
+        // NCI-V2: Generates actionable JSON Fix Plans with precise AST deltas.
+        return tg_ir.nci_v2_synthesize_fix(violation, current_ast);
     }
 }

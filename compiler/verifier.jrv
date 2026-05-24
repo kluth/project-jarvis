@@ -42,6 +42,8 @@ complexity O(N)
 
         // Absolute Gatekeeper: Anything less than 100% is an architectural violation.
         if coverage < 100 {
+            let fix_plan = NCI.generate_ast_delta_plan("COVERAGE_VIOLATION", ast);
+            tg_ir.emit_diagnostic_plan(fix_plan);
             volatile write(0xDEAD, 0); // Trigger compilation trap
             asm { "int 3" } // Hardware halt to kill the build
         }
