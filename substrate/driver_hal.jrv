@@ -10,6 +10,11 @@ complexity O(log N)
             let res = bind_driver(git, manifest);
             assert(res.ok);
         }
+        test "shell_exec_proof" {
+            let res = shell_exec_intrinsic("ls", List[Str] { "-la" });
+            assert(res != "");
+            assert(tg_ir.is_sandboxed_exec_verified("ls"));
+        }
         test "sovereign_synthesis_proof" {
             let record = DiscoveryRecord { id: 1, transport: BusType.Shell_IPC, endpoint: "sovereign", class: DeviceClass.SovereignAgent };
             let res = synthesize_and_bind_sovereign(record);
@@ -49,6 +54,12 @@ complexity O(log N)
             return Result.Ok();
         }
         return Result.Failed("Synthesis failed");
+    }
+
+    func shell_exec_intrinsic(endpoint: Str, args: List[Str]) -> Str {
+        // ADR 011: Executes system tools via sandboxed Shell_IPC.
+        // Rule: Only Trusted/Sovereign entities can call this.
+        return tg_ir.hal_shell_execute(endpoint, args);
     }
 
     func unbind_driver(device: DiscoveryRecord) -> Result {
