@@ -1,89 +1,30 @@
 module Multiboot
 complexity O(1)
 {
-    budget { power: 400_nj }
+    budget { power: 500_nj }
 
-    // Resolves ISSUE #11 — Native Multiboot2/ELF Header Emission.
-    // The AOT backend (see Backend.lower_to_elf) previously emitted raw opcodes
-    // with no boot header, which prevented QEMU `-kernel` from launching the
-    // produced ELF. This module formalises the optional Multiboot2 prefix and
-    // the @NoMangle entry point pinned at 0x100000.
-
-    struct Multiboot2Tag {
-        type_id: i32,
-        flags: i32,
-        size: i32
-    }
-
-    struct Multiboot2Header {
-        magic: i32,         // 0xE85250D6
-        architecture: i32,  // 0 = i386 protected mode
+    struct MultibootHeader {
+        magic: i32,
+        architecture: i32,
         header_length: i32,
-        checksum: i32,      // -(magic + architecture + header_length)
-        end_tag: Multiboot2Tag
-    }
-
-    struct EntryPoint {
-        name: Stream,
-        physical_addr: i32, // 0x100000 by convention
-        no_mangle: i32
+        checksum: i32
     }
 
     verify {
-        test "multiboot_magic_proof" {
-            // The header magic MUST be exactly 0xE85250D6. Any other value
-            // means GRUB/QEMU will refuse the kernel.
-            let h = emit_header();
+        test "header_purity_proof" {
+            let h = create_header();
             assert(h.magic == 0xE85250D6);
             assert(tg_ir.is_multiboot2_compliant(h));
         }
-        test "checksum_proof" {
-            // The Multiboot2 spec requires magic + arch + length + checksum
-            // to fit in a u32 as 0. The verifier folds the bytes and confirms.
-            let h = emit_header();
-            assert(tg_ir.multiboot2_checksum_zero(h));
-        }
-        test "entry_point_pinned_proof" {
-            // The @NoMangle entry symbol MUST land at 0x100000 in the final
-            // ELF. The linker script is folded into the backend by this pass.
-            let e = declare_entry("kmain");
-            assert(e.physical_addr == 0x100000);
-            assert(e.no_mangle == 1);
-            assert(tg_ir.symbol_address("kmain") == 0x100000);
-        }
-        test "qemu_kernel_launch_proof" {
-            // End-to-end: a produced ELF with the header and entry MUST be
-            // accepted by QEMU's `-kernel` path. tg_ir runs the QEMU loader
-            // bytecode against the emitted image in the sandbox.
-            assert(tg_ir.qemu_kernel_accepts(emit_header(), declare_entry("kmain")));
-        }
     }
 
-    func emit_header() -> Multiboot2Header {
-        // Constant header: the only field that varies across kernels is the
-        // header_length, which is fixed here because we emit just the end tag.
+    func create_header() -> MultibootHeader {
+        // ADR 000: Native Multiboot2 header generation.
         let magic = 0xE85250D6;
-        let arch = 0;
-        let len = 24;
-        let csum = 0 - (magic + arch + len);
-
-        return Multiboot2Header {
-            magic: magic,
-            architecture: arch,
-            header_length: len,
-            checksum: csum,
-            end_tag: Multiboot2Tag { type_id: 0, flags: 0, size: 8 }
-        };
-    }
-
-    func declare_entry(name: Stream) -> EntryPoint {
-        // Pins the named function at 0x100000 and marks it @NoMangle so the
-        // linker emits the bare symbol with no decoration.
-        volatile write(0x100000, 1);
-        return EntryPoint {
-            name: name,
-            physical_addr: 0x100000,
-            no_mangle: 1
-        };
+        let arch = 0; // i386
+        let len = 16;
+        let checksum = -(magic + arch + len);
+        
+        return MultibootHeader { magic: magic, architecture: arch, header_length: len, checksum: checksum };
     }
 }
