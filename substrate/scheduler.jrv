@@ -3,35 +3,50 @@ complexity O(1)
 {
     budget { power: 2000_nj }
 
-    struct Task {
+    struct SynapticTask {
         id: i32,
-        node_ptr: Stream,
-        priority: i32
+        path_ptr: Stream,
+        weight: i32,
+        firing_threshold: i32,
+        current_charge: i32
     }
 
     verify {
-        test "priority_proof" {
-            dispatch();
-            assert(tg_ir.scheduler_priority_level() > 0);
+        test "synaptic_firing_proof" {
+            let task = SynapticTask { id: 1, path_ptr: "CODE", weight: 10, firing_threshold: 100, current_charge: 95 };
+            let fired = synaptic_fire(task);
+            assert(fired.current_charge >= 0);
+            assert(tg_ir.neural_pathway_active(1));
         }
-        test "tick_proof" {
-            tick();
-            assert(tg_ir.is_deterministic_tick());
+        test "starvation_prevention_proof" {
+            let res = verify_synaptic_fairness();
+            assert(res == 1);
         }
     }
 
     func dispatch() {
-        // Priority 1: Self-Healing (AwaitingFix)
-        // Priority 2: Standard Processing
-        
-        let high_pri_task = 0;
-        if high_pri_task == 1 {
-            poll;
-        }
+        // ADR 010: Synaptic Dispatcher
+        // Replaces legacy preemption with weight-based firing
+        let high_pri_node = tg_ir.get_max_weighted_node();
+        tg_ir.redirect_interrupt_pathway(high_pri_node);
     }
 
-    func tick() {
-        dispatch();
-        // Evolutionary sync point
+    func synaptic_fire(task: SynapticTask) -> SynapticTask {
+        // Increments charge based on weight; fires when threshold is reached
+        let new_charge = task.current_charge + task.weight;
+        
+        if new_charge >= task.firing_threshold {
+            tg_ir.execute_neural_path(task.path_ptr);
+            return SynapticTask { id: task.id, path_ptr: task.path_ptr, weight: task.weight, 
+                                  firing_threshold: task.firing_threshold, current_charge: 0 };
+        }
+        
+        return SynapticTask { id: task.id, path_ptr: task.path_ptr, weight: task.weight, 
+                              firing_threshold: task.firing_threshold, current_charge: new_charge };
+    }
+
+    func verify_synaptic_fairness() -> i32 {
+        // Static proof that no path remains uncharged indefinitely
+        return tg_ir.verify_no_starvation();
     }
 }
