@@ -8,39 +8,56 @@ complexity O(log N) // B-tree indexed by device_id
             let result = lookup(1);
             assert(result.device_id == 1);
         }
-        test "tombstoned_entry_not_returned_by_normal_lookup" {
-            let entry = RegistryEntry { device_id: 2, state: DriverState.Active };
+        test "lookup_by_address_proof" {
+            let entry = RegistryEntry { device_id: 2, record: DiscoveryRecord { address: Bytes { 0xAA } } };
             register(entry);
-            tombstone(2);
-            let result = lookup(2);
+            let res = lookup_by_address(Bytes { 0xAA });
+            assert(res.is_some);
+        }
+        test "tombstoned_entry_not_returned_by_normal_lookup" {
+            let entry = RegistryEntry { device_id: 3, state: DriverState.Active };
+            register(entry);
+            tombstone(3);
+            let result = lookup(3);
             assert(result.is_none);
         }
-        test "fast_reactivate_does_not_call_synthesizer" {
-            let entry = RegistryEntry { device_id: 3, state: DriverState.Evicted, driver_handle: Option.Some(DriverHandle { module_id: 100 }) };
+        test "update_state_verification" {
+            let entry = RegistryEntry { device_id: 4, state: DriverState.Active };
             register(entry);
-            let handle = fast_reactivate(3);
+            update_state(4, DriverState.Suspended);
+            assert(lookup_all().find(4).state == DriverState.Suspended);
+        }
+        test "fast_reactivate_does_not_call_synthesizer" {
+            let entry = RegistryEntry { device_id: 5, state: DriverState.Evicted, driver_handle: Option.Some(DriverHandle { module_id: 100 }) };
+            register(entry);
+            let handle = fast_reactivate(5);
             assert(handle.module_id == 100);
             assert(tg_ir.call_count("DriverSynthesizer.synthesize") == 0);
         }
         test "heartbeat_miss_increments_counter" {
-            let entry = RegistryEntry { device_id: 4, miss_count: 0 };
+            let entry = RegistryEntry { device_id: 6, miss_count: 0 };
             register(entry);
-            record_heartbeat(4, false);
-            let updated = lookup_all().find(4);
+            record_heartbeat(6, false);
+            let updated = lookup_all().find(6);
             assert(updated.miss_count == 1);
         }
         test "max_misses_triggers_suspended_transition" {
-            let entry = RegistryEntry { device_id: 5, state: DriverState.Active, miss_count: 4 };
+            let entry = RegistryEntry { device_id: 7, state: DriverState.Active, miss_count: 4 };
             register(entry);
-            record_heartbeat(5, false); // Assuming max_misses is 5
-            let updated = lookup_all().find(5);
+            record_heartbeat(7, false); // Assuming max_misses is 5
+            let updated = lookup_all().find(7);
             assert(updated.state == DriverState.Suspended);
         }
         test "gc_does_not_evict_active_or_trusted_sovereign_devices" {
-            register(RegistryEntry { device_id: 6, state: DriverState.Active });
-            register(RegistryEntry { device_id: 7, state: DriverState.Suspended, trust: TrustLevel.Sovereign });
+            register(RegistryEntry { device_id: 8, state: DriverState.Active });
+            register(RegistryEntry { device_id: 9, state: DriverState.Suspended, trust: TrustLevel.Sovereign });
             gc_expired(EvictionConfig { evict_after_ms: 0 }); // Attempt immediate eviction
             assert(lookup_all().count == 2);
+        }
+        test "heartbeat_loop_initialization" {
+            let config = HeartbeatConfig { interval_ms: 1000 };
+            let handle = start_heartbeat_loop(10, config);
+            assert(handle.id != 0);
         }
         test "registry_purity" {
             assert(tg_ir.is_native_substrate());

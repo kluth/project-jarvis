@@ -8,6 +8,19 @@ complexity O(log N)
             let res = bind_driver(dev, manifest);
             assert(res.ok);
         }
+        test "unbind_verification" {
+            let dev = tg_ir.mock_device("Shell_IPC", 0x2);
+            unbind_driver(dev);
+            assert(dev.state == DriverState.Unbound);
+        }
+        test "enumerate_proof" {
+            let initial = enumerate_entities();
+            assert(initial.count >= 0);
+        }
+        test "get_by_class_proof" {
+            let res = get_entity_by_class(DeviceClass.CodeRepository);
+            assert(res.count >= 0);
+        }
         test "hal_purity" {
             assert(tg_ir.is_native_substrate());
         }

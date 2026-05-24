@@ -10,7 +10,18 @@ complexity O(N) // N = AST nodes in synthesized module
             assert(res.ok);
             assert(res.module.verified);
         }
-        test "injection_purity" {
+        test "injection_verification" {
+            let m = JrvModule { ast: tg_ir.mock_ast(), module_id: 1, verified: true };
+            let handle = inject(m);
+            assert(handle.module_id != 0);
+        }
+        test "assimilate_verification" {
+            let p = DeviceProfile { class: DeviceClass.CodeRepository };
+            let r = DiscoveryRecord { id: 2, transport: BusType.Shell_IPC, endpoint: "ls", confidence: 1.0, timestamp: 0 };
+            let ar = assimilate(r, p, TrustLevel.Sovereign);
+            assert(ar.state == DriverState.Active);
+        }
+        test "synthesizer_purity" {
             assert(tg_ir.is_native_substrate());
         }
     }

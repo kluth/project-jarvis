@@ -33,6 +33,18 @@ complexity O(N)
             let kernel = compile_kernel("let x = 1;", caps);
             assert(kernel.target_isa == "CPU_ISA");
         }
+        test "atomic_plane_update_proof" {
+            let dev = tg_ir.mock_device("Display", 3);
+            let planes = List[DisplayPlane] { DisplayPlane { id: 0, zpos: 0 } };
+            let res = atomic_plane_update(dev, planes);
+            assert(res.ok);
+        }
+        test "alloc_render_target_proof" {
+            let dev = tg_ir.mock_device("Display", 4);
+            let target = RenderTarget { width: 640, height: 480 };
+            let buf = alloc_render_target(dev, target);
+            assert(buf.id != 0);
+        }
         test "render_purity" {
             assert(tg_ir.is_native_substrate());
         }
