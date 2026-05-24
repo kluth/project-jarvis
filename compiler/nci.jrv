@@ -30,6 +30,11 @@ complexity O(N)
             assert(tg_ir.has_ast_deltas(plan));
             assert(tg_ir.is_pre_verified_fix(plan));
         }
+        test "mag_routing_proof" {
+            let res = route_to_agent("quantum");
+            assert(res != "");
+            assert(tg_ir.is_routing_to_domain("quantum"));
+        }
     }
 
     func dispatch_request(req: McpRequest) -> Stream {
@@ -49,5 +54,10 @@ complexity O(N)
     func generate_ast_delta_plan(violation: Stream, current_ast: Stream) -> Stream {
         // NCI-V2: Generates actionable JSON Fix Plans with precise AST deltas.
         return tg_ir.nci_v2_synthesize_fix(violation, current_ast);
+    }
+
+    func route_to_agent(domain: Stream) -> Stream {
+        // ADR 009: MAG routing logic. Matches task domain to agent Skill Manifests.
+        return tg_ir.mag_route_domain(domain);
     }
 }

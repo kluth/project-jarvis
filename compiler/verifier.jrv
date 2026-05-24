@@ -28,6 +28,11 @@ complexity O(N)
             assert(res == 1);
             assert(tg_ir.complexity_verified("O(1)"));
         }
+        test "skill_verification_proof" {
+            let res = verify_agent_skill("MANIFEST_JSON");
+            assert(res == 1);
+            assert(tg_ir.skill_manifest_valid());
+        }
         test "verifier_purity_proof" {
             assert(tg_ir.is_pure_jrv());
         }
@@ -97,6 +102,18 @@ complexity O(N)
             tg_ir.emit_diagnostic_plan(fix_plan);
             volatile write(0xDEAD, 4); // PDD Trap
             asm { "int 3" } // Halt compilation. Code is inefficient.
+        }
+
+        return 1;
+    }
+
+    func verify_agent_skill(manifest: Stream) -> i32 {
+        // ADR 009: Formally verifies agent Skill Manifests against the schema.
+        let is_valid = tg_ir.validate_manifest_schema(manifest);
+        
+        if is_valid == 0 {
+            volatile write(0xDEAD, 5); // Skill Trap
+            asm { "int 3" } // Halt. Agent is unauthorized or non-compliant.
         }
 
         return 1;
