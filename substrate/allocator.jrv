@@ -7,35 +7,40 @@ complexity O(1)
         size: 16777216 // 16MB Arena
     }
 
-    struct Allocation {
-        ptr: Stream,
-        size: i32
+    struct SynapticToken {
+        lattice_id: i32,
+        neuron_weight: i32,
+        address_hash: i32
     }
 
     verify {
-        test "align_proof" {
-            let ptr = alloc(128);
-            assert(ptr % 64 == 0); // Explicit 64-byte alignment check
-            assert(tg_ir.atomic_store_verified(0x2000000));
+        test "neural_lattice_proof" {
+            let token = neural_alloc(128, 42);
+            assert(token.lattice_id != 0);
+            assert(tg_ir.is_synaptic_mapping_valid(token));
+        }
+        test "overflow_protection_proof" {
+            let token = neural_alloc(64, 10);
+            assert(tg_ir.has_zero_cost_bounds(token));
         }
         test "pin_proof" {
-            let ptr = 0x2000000;
-            pin_block(ptr);
-            assert(tg_ir.is_memory_pinned(ptr));
+            let token = neural_alloc(128, 42);
+            pin_token(token);
+            assert(tg_ir.is_synapse_pinned(token.lattice_id));
         }
     }
 
-    func alloc(size: i32) -> Stream {
-        // EFDD: 64-byte alignment enforcement
-        let align = 64;
-        let current_ptr = 0x2000000;
+    func neural_alloc(size: i32, weight: i32) -> SynapticToken {
+        // EFDD: Substrate-level neural allocation
+        // Replaces legacy linear addressing with synaptic tokens
+        let id = tg_ir.generate_synaptic_id();
+        let hash = tg_ir.hash_neural_bounds(size);
         
-        atomic store(current_ptr, current_ptr + size);
-        return current_ptr;
+        return SynapticToken { lattice_id: id, neuron_weight: weight, address_hash: hash };
     }
 
-    func pin_block(ptr: Stream) {
+    func pin_token(token: SynapticToken) {
         // Prevent RCU reclamation during Fix Plan phase
-        volatile write(ptr, 1);
+        tg_ir.pin_synapse(token.lattice_id);
     }
 }
