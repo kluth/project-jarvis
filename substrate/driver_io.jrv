@@ -21,6 +21,11 @@ complexity O(1)
             assert(rb.size == 64);
             assert(tg_ir.is_lock_free_structure(rb.id));
         }
+        test "dom_event_synthesis_proof" {
+            let ev = Event { type: EventType.Pointer, code: 1, value: 0, timestamp: 0, device_id: 100 };
+            DOM_event_synthetic(ev);
+            assert(tg_ir.is_dom_event_injected(ev));
+        }
         test "consumer_lifecycle_proof" {
             let handle = register_consumer(DeviceClass.Unknown, func(e: Event){});
             assert(handle.id != 0);
@@ -113,5 +118,10 @@ complexity O(1)
         // ADR 002: Native lock-free ring buffer for stream communication.
         let id = tg_ir.allocate_lock_free_ring(size);
         return AtomicRingBuffer { id: id, size: size, read_idx: 0, write_idx: 0 };
+    }
+
+    func DOM_event_synthetic(event: Event) {
+        // ADR 011: Injects web-originated DOM events into the substrate flow.
+        tg_ir.hal_dom_inject_event(event);
     }
 }
