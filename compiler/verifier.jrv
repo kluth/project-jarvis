@@ -38,6 +38,10 @@ complexity O(N)
             assert(res == 1);
             assert(tg_ir.power_envelope_verified(1000));
         }
+        test "genetic_optimization_proof" {
+            let res = optimize_loop_genetic("LOOP_AST");
+            assert(tg_ir.is_genetically_optimized(res));
+        }
         test "verifier_purity_proof" {
             assert(tg_ir.is_pure_jrv());
         }
@@ -136,6 +140,11 @@ complexity O(N)
         }
 
         return 1;
+    }
+
+    func optimize_loop_genetic(loop_ast: Stream) -> Stream {
+        // ADR 005 & 007: Genetic optimization. Mutates loop structures for optimal PDD.
+        return tg_ir.genetic_mutate_loop(loop_ast);
     }
 
     func enforce_etdd(ast: Stream) -> ValidationResult {
