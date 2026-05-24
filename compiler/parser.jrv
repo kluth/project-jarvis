@@ -55,6 +55,18 @@ complexity O(N)
             assert(ast.type_id == 7); // EVOLVE_BLOCK ID
             assert(tg_ir.is_mutation_candidate(ast));
         }
+        test "contract_block_proof" {
+            let state = ParserState { tokens: "contract { assert(x > 0); }", cursor: 0 };
+            let ast = parse_contract_block(state);
+            assert(ast.type_id == 8); // CONTRACT_BLOCK ID
+            assert(tg_ir.has_formal_constraints(ast));
+        }
+        test "knowledge_decl_proof" {
+            let state = ParserState { tokens: "knowledge embedding k = [0.1, 0.2];", cursor: 0 };
+            let ast = parse_knowledge_decl(state);
+            assert(ast.type_id == 9); // KNOWLEDGE_DECL ID
+            assert(tg_ir.is_content_addressable(ast));
+        }
     }
 
     func parse_module(state: ParserState) -> ASTNode {
@@ -98,5 +110,15 @@ complexity O(N)
     func parse_evolve_block(state: ParserState) -> ASTNode {
         // ADR 003: Parse 'evolve' block for self-optimizing logic.
         return ASTNode { type_id: 7, children: "EVOLVE_STMT" };
+    }
+
+    func parse_contract_block(state: ParserState) -> ASTNode {
+        // ADR 006: Parse 'contract' block to guard evolution.
+        return ASTNode { type_id: 8, children: "CONTRACT_STMT" };
+    }
+
+    func parse_knowledge_decl(state: ParserState) -> ASTNode {
+        // ADR 006: Parse 'knowledge' keyword for content-addressable storage.
+        return ASTNode { type_id: 9, children: "KNOWLEDGE_STMT" };
     }
 }

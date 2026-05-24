@@ -31,6 +31,11 @@ complexity O(1)
             assert(region.id != 0);
             assert(tg_ir.region_bounds_verified(region.id, 4096));
         }
+        test "knowledge_alloc_proof" {
+            let token = knowledge_alloc("VECTOR_EMBEDDING");
+            assert(token.lattice_id != 0);
+            assert(tg_ir.is_semantic_indexed(token.lattice_id));
+        }
         test "overflow_protection_proof" {
             let token = neural_alloc(64, 10);
             assert(tg_ir.has_zero_cost_bounds(token));
@@ -61,6 +66,12 @@ complexity O(1)
     func free_life_region(region: LifeRegion) {
         // Bulk-frees the entire region, avoiding fragmentation.
         tg_ir.deallocate_region(region.id);
+    }
+
+    func knowledge_alloc(embedding: Stream) -> SynapticToken {
+        // ADR 006: Content-addressable storage indexed by semantic embeddings.
+        let id = tg_ir.allocate_knowledge_node(embedding);
+        return SynapticToken { lattice_id: id, neuron_weight: 100, address_hash: 0 };
     }
 
     func pin_token(token: SynapticToken) {
