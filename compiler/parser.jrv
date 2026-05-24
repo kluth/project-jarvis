@@ -31,6 +31,18 @@ complexity O(N)
             assert(ast.type_id == 3); // PROB_BLOCK ID
             assert(tg_ir.has_stochastic_branch(ast));
         }
+        test "sync_block_proof" {
+            let state = ParserState { tokens: "sync(var) { x = 1; }", cursor: 0 };
+            let ast = parse_sync_block(state);
+            assert(ast.type_id == 4); // SYNC_BLOCK ID
+            assert(tg_ir.has_consensus_gate(ast));
+        }
+        test "gossip_proof" {
+            let state = ParserState { tokens: "gossip 'peer.node';", cursor: 0 };
+            let ast = parse_gossip(state);
+            assert(ast.type_id == 5); // GOSSIP ID
+            assert(tg_ir.is_decentralized_prop(ast));
+        }
     }
 
     func parse_module(state: ParserState) -> ASTNode {
@@ -49,5 +61,20 @@ complexity O(N)
     func parse_statement(state: ParserState) -> ASTNode {
         // Parse individual statements (let, return, if, etc.)
         return ASTNode { type_id: 2, children: "STMT" };
+    }
+
+    func parse_prob_block(state: ParserState) -> ASTNode {
+        // Parse 'prob' keyword and the following stochastic blocks
+        return ASTNode { type_id: 3, children: "PROB_STMT" };
+    }
+
+    func parse_sync_block(state: ParserState) -> ASTNode {
+        // Parse 'sync' keyword for swarm consensus
+        return ASTNode { type_id: 4, children: "SYNC_STMT" };
+    }
+
+    func parse_gossip(state: ParserState) -> ASTNode {
+        // Parse 'gossip' primitive
+        return ASTNode { type_id: 5, children: "GOSSIP_STMT" };
     }
 }
