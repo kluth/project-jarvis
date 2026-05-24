@@ -13,6 +13,8 @@ complexity O(1)
         COMM_SYNC: i32,
         PROB_JUMP: i32,
         SUPERPOSE: i32,
+        SWARM_SYNC: i32,
+        GOSSIP: i32,
         HALT: i32
     }
 
@@ -27,6 +29,8 @@ complexity O(1)
             assert(ops.HALT == 0);
             assert(ops.PROB_JUMP == 8);
             assert(ops.SUPERPOSE == 9);
+            assert(ops.SWARM_SYNC == 10);
+            assert(ops.GOSSIP == 11);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -41,6 +45,8 @@ complexity O(1)
             COMM_SYNC: 7,
             PROB_JUMP: 8,
             SUPERPOSE: 9,
+            SWARM_SYNC: 10,
+            GOSSIP: 11,
             HALT: 0
         };
     }
