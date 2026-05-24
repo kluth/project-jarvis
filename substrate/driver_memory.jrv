@@ -2,36 +2,26 @@ module DriverMemory
 complexity O(1)
 {
     verify {
-        test "allocation_integrity" {
-            // RUTHLESS: Allocate and verify real memory on the active machine
+        test "holographic_allocation_integrity" {
+            // RUTHLESS: Allocate and verify real holographic field
             let dev = AmbientScanner.scan_sysfs_pci().get(0);
-            let buf = alloc(PoolType.Shared, 4096, dev);
-            assert(buf.id != 0);
-            free(buf);
+            let field = holographic_alloc(PoolType.Shared, 4096, dev);
+            assert(field.hologram_id != 0);
+            holographic_free(field);
         }
         test "no_double_free" {
             let dev = AmbientScanner.scan_sysfs_pci().get(0);
-            let buf = alloc(PoolType.Shared, 1024, dev);
-            free(buf);
-            let res = free(buf);
+            let field = holographic_alloc(PoolType.Shared, 1024, dev);
+            holographic_free(field);
+            let res = holographic_free(field);
             assert(res.failed);
         }
-        test "migration_proof" {
+        test "holographic_mapping_proof" {
             let dev = AmbientScanner.scan_sysfs_pci().get(0);
-            let buf = alloc(PoolType.Shared, 1024, dev);
-            let res = migrate(buf, PoolType.Device, MigrationPolicy.Lazy);
-            assert(res.ok);
-        }
-        test "mapping_proof" {
-            let dev = AmbientScanner.scan_sysfs_pci().get(0);
-            let buf = alloc(PoolType.Shared, 1024, dev);
-            let addr = map_to_device(buf, dev);
-            assert(addr.addr != 0);
-            unmap(buf);
-        }
-        test "release_proof" {
-            let freed = release_all_for_device(1);
-            assert(freed >= 0);
+            let field = holographic_alloc(PoolType.Shared, 1024, dev);
+            let holo_addr = map_to_hologram(field, dev);
+            assert(holo_addr.probabilistic_hash != 0);
+            holographic_unmap(field);
         }
         test "memory_purity" {
             assert(tg_ir.is_native_substrate());
@@ -39,39 +29,29 @@ complexity O(1)
     }
 
     type PoolType { Shared | Device }
-    type BufferHandle { id: U64, size_bytes: U64, pool: PoolType,
-                        device_id: U64, virt_addr: U64 }
-    type MigrationPolicy { Lazy | Eager | Never }
-    type VirtAddr { addr: U64 }
+    type HologramHandle { hologram_id: U64, size_bytes: U64, pool: PoolType,
+                          device_id: U64, field_intensity: U64 }
+    type VirtAddr { addr: U64, probabilistic_hash: U64 }
 
-    func alloc(pool: PoolType, size_bytes: U64, device: DiscoveryRecord) -> BufferHandle {
+    func holographic_alloc(pool: PoolType, size_bytes: U64, device: DiscoveryRecord) -> HologramHandle {
         budget { power: 200_nj }
-        return tg_ir.hal_alloc_memory(pool, size_bytes, device.id);
+        // Holographic memory mapping replaces legacy linear page tables
+        return tg_ir.holographic_alloc(pool, size_bytes, device.id);
     }
 
-    func free(handle: BufferHandle) -> Result {
+    func holographic_free(handle: HologramHandle) -> Result {
         budget { power: 100_nj }
-        return tg_ir.hal_free_memory(handle);
+        return tg_ir.holographic_free(handle);
     }
 
-    func migrate(handle: BufferHandle, target: PoolType, policy: MigrationPolicy) -> Result {
-        budget { power: 400_nj }
-        return tg_ir.hal_migrate_memory(handle, target, policy);
-    }
-
-    func map_to_device(handle: BufferHandle, device: DiscoveryRecord) -> VirtAddr {
+    func map_to_hologram(handle: HologramHandle, device: DiscoveryRecord) -> VirtAddr {
         budget { power: 300_nj }
-        let addr = tg_ir.hal_map_memory(handle, device.id);
-        return VirtAddr { addr: addr };
+        let hash = tg_ir.holographic_map(handle, device.id);
+        return VirtAddr { addr: 0, probabilistic_hash: hash };
     }
 
-    func unmap(handle: BufferHandle) -> Result {
+    func holographic_unmap(handle: HologramHandle) -> Result {
         budget { power: 100_nj }
-        return tg_ir.hal_unmap_memory(handle);
-    }
-
-    func release_all_for_device(device_id: U64) -> U32 {
-        budget { power: 50_nj }
-        return tg_ir.hal_release_device_memory(device_id);
+        return tg_ir.holographic_unmap(handle);
     }
 }
