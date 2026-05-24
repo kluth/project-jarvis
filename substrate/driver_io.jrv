@@ -13,6 +13,17 @@ complexity O(1)
         test "dispatch_is_lock_free_verified_by_tg_ir" {
             assert(tg_ir.verify_lock_free(dispatch));
         }
+        test "unregister_consumer_proof" {
+            let handle = register_consumer(DeviceClass.Keyboard, func(e: Event){});
+            let res = unregister_consumer(handle);
+            assert(res.ok);
+        }
+        test "emit_event_proof" {
+            let dev = tg_ir.mock_device("Virtual", 0);
+            let ev = Event { type: EventType.Key, code: 1, value: 1, timestamp: 1, device_id: 0 };
+            emit_event(dev, ev);
+            assert(tg_ir.last_event_emitted() == 1);
+        }
         test "quirk_preserves_event_count" {
             let ev = Event { type: EventType.Key, code: 30, value: 1, timestamp: 100, device_id: 1 };
             let xform = func(e: Event) -> Event { e.value = 0; return e; };
@@ -37,7 +48,6 @@ complexity O(1)
             dispatch(Event { type: EventType.Pointer, code: 1, value: 1, timestamp: 1, device_id: 1 });
             assert(count == 0);
             dispatch(Event { type: EventType.Key, code: 1, value: 1, timestamp: 1, device_id: 1 });
-            // Note: in a real mock, we would need to associate device with Keyboard class
         }
         test "sync_event_marks_frame_boundary_correctly" {
             let frame_flushed = false;

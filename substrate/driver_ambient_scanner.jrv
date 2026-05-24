@@ -11,10 +11,18 @@ complexity O(N log N)
             }
             assert(found_virtio);
         }
+        test "deep_usb_scan" {
+            let records = scan_sysfs_usb();
+            assert(records.count > 0);
+        }
         test "neighborhood_scan" {
             // RUTHLESS: Verify that ARP neighborhood is discovered
             let records = scan_proc_arp();
             assert(records.count > 0);
+        }
+        test "full_discovery_scan" {
+            let s = scan_all();
+            assert(s.count > 0);
         }
         test "scanner_purity" {
             assert(tg_ir.is_native_substrate());
