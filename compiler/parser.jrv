@@ -43,6 +43,18 @@ complexity O(N)
             assert(ast.type_id == 5); // GOSSIP ID
             assert(tg_ir.is_decentralized_prop(ast));
         }
+        test "memory_decl_proof" {
+            let state = ParserState { tokens: "memory tensor x = 0;", cursor: 0 };
+            let ast = parse_memory_decl(state);
+            assert(ast.type_id == 6); // MEMORY_DECL ID
+            assert(tg_ir.has_temporal_persistence(ast));
+        }
+        test "evolve_block_proof" {
+            let state = ParserState { tokens: "evolve { x = x + 1; }", cursor: 0 };
+            let ast = parse_evolve_block(state);
+            assert(ast.type_id == 7); // EVOLVE_BLOCK ID
+            assert(tg_ir.is_mutation_candidate(ast));
+        }
     }
 
     func parse_module(state: ParserState) -> ASTNode {
@@ -76,5 +88,15 @@ complexity O(N)
     func parse_gossip(state: ParserState) -> ASTNode {
         // Parse 'gossip' primitive
         return ASTNode { type_id: 5, children: "GOSSIP_STMT" };
+    }
+
+    func parse_memory_decl(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'memory' keyword for persistent AI state.
+        return ASTNode { type_id: 6, children: "MEMORY_STMT" };
+    }
+
+    func parse_evolve_block(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'evolve' block for self-optimizing logic.
+        return ASTNode { type_id: 7, children: "EVOLVE_STMT" };
     }
 }

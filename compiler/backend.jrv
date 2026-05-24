@@ -35,6 +35,10 @@ complexity O(N)
             assert(res == 1);
             assert(tg_ir.ownership_transferred(0x1000));
         }
+        test "evolving_block_opt_proof" {
+            let res = optimize_evolving_block("EVOLVE_AST");
+            assert(tg_ir.is_optimally_lowerered(res));
+        }
     }
 
     func lower_to_elf(ast: Stream) -> Stream {
@@ -61,5 +65,10 @@ complexity O(N)
     func perform_zero_copy_handover(memory_ptr: i32, target_node: Stream) -> i32 {
         // ADR 007: Transfers ownership of the context tensor without data movement.
         return tg_ir.transfer_tensor_ownership(memory_ptr, target_node);
+    }
+
+    func optimize_evolving_block(ast: Stream) -> Stream {
+        // ADR 003: Benchmarks and selects the optimal path for an evolving block.
+        return tg_ir.benchmark_and_lower(ast);
     }
 }
