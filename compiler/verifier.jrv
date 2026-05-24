@@ -33,6 +33,11 @@ complexity O(N)
             assert(res == 1);
             assert(tg_ir.skill_manifest_valid());
         }
+        test "entropy_budget_proof" {
+            let res = verify_entropy_budget(1000, "FUNC_AST");
+            assert(res == 1);
+            assert(tg_ir.power_envelope_verified(1000));
+        }
         test "verifier_purity_proof" {
             assert(tg_ir.is_pure_jrv());
         }
@@ -114,6 +119,20 @@ complexity O(N)
         if is_valid == 0 {
             volatile write(0xDEAD, 5); // Skill Trap
             asm { "int 3" } // Halt. Agent is unauthorized or non-compliant.
+        }
+
+        return 1;
+    }
+
+    func verify_entropy_budget(budget_nj: i32, func_ast: Stream) -> i32 {
+        // ADR 004 & 007: EFDD enforcement. Calculates nanojoule cost of execution paths.
+        let total_cost = tg_ir.calculate_energy_cost(func_ast);
+        
+        if total_cost > budget_nj {
+            let fix_plan = NCI.generate_ast_delta_plan("EFDD_VIOLATION", func_ast);
+            tg_ir.emit_diagnostic_plan(fix_plan);
+            volatile write(0xDEAD, 6); // EFDD Trap
+            asm { "int 3" } // Halt. Code is energy-inefficient.
         }
 
         return 1;
