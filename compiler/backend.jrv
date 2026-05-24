@@ -25,6 +25,16 @@ complexity O(N)
             let header = generate_multiboot_header();
             assert(tg_ir.is_multiboot2_compliant(header));
         }
+        test "boot_sector_emission_proof" {
+            let sector = emit_boot_sector("CODE_STUB");
+            assert(tg_ir.verify_boot_sector(sector));
+            assert(tg_ir.has_signature(sector, 0xAA55));
+        }
+        test "zero_copy_handover_proof" {
+            let res = perform_zero_copy_handover(0x1000, "NEW_NODE");
+            assert(res == 1);
+            assert(tg_ir.ownership_transferred(0x1000));
+        }
     }
 
     func lower_to_elf(ast: Stream) -> Stream {
@@ -46,5 +56,10 @@ complexity O(N)
         // Enforces exactly 512-byte boot sector layout.
         // The last 2 bytes MUST be the boot signature 0xAA55.
         return tg_ir.pad_and_sign_sector(code, 512, 0xAA55);
+    }
+
+    func perform_zero_copy_handover(memory_ptr: i32, target_node: Stream) -> i32 {
+        // ADR 007: Transfers ownership of the context tensor without data movement.
+        return tg_ir.transfer_tensor_ownership(memory_ptr, target_node);
     }
 }
