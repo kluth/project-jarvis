@@ -31,6 +31,11 @@ complexity O(N) // N = rules evaluated
             let p = DeviceProfile { class: DeviceClass.Sensor };
             assert(evaluate(p, 0.8) == evaluate(p, 0.8));
         }
+        test "behavioral_trust_escalation_proof" {
+            let profile = DeviceProfile { class: DeviceClass.ComputeNode };
+            let level = evaluate_behavioral_trust(profile, 0.9, 10); // 10 = low entropy (stable)
+            assert(level == TrustLevel.Trusted);
+        }
         test "trust_purity" {
             assert(tg_ir.is_native_substrate());
         }
@@ -85,5 +90,13 @@ complexity O(N) // N = rules evaluated
     func verify_proof(proof: OperatorProof) -> Bool {
         budget { power: 300_nj }
         return tg_ir.crypto_verify_signature(proof.signature, proof.device_id, proof.new_level);
+    }
+
+    func evaluate_behavioral_trust(profile: DeviceProfile, confidence: F32, entropy: i32) -> TrustLevel {
+        // ADR 010: Escalates trust level based on behavioral consistency (low entropy).
+        if confidence > 0.85 && entropy < 20 {
+            return TrustLevel.Trusted;
+        }
+        return evaluate(profile, confidence);
     }
 }
