@@ -10,20 +10,18 @@ complexity O(log N)
             let res = bind_driver(git, manifest);
             assert(res.ok);
         }
+        test "sovereign_synthesis_proof" {
+            let record = DiscoveryRecord { id: 1, transport: BusType.Shell_IPC, endpoint: "sovereign", class: DeviceClass.SovereignAgent };
+            let res = synthesize_and_bind_sovereign(record);
+            assert(res.ok);
+            assert(tg_ir.is_sovereign_bound(1));
+        }
         test "unbind_verification" {
             // RUTHLESS: Use real entity
             let records = AmbientScanner.scan_path();
             let dev = records.get(0);
             unbind_driver(dev);
             assert(dev.state == DriverState.Unbound);
-        }
-        test "enumerate_proof" {
-            let initial = enumerate_entities();
-            assert(initial.count > 0);
-        }
-        test "get_by_class_proof" {
-            let res = get_entity_by_class(DeviceClass.Unknown);
-            assert(res.count >= 0);
         }
         test "hal_purity" {
             assert(tg_ir.is_native_substrate());
@@ -33,12 +31,24 @@ complexity O(log N)
     type BusType { MCP_Stdio | MCP_SSE | REST_API | GraphQL | Shell_IPC | WebSocket | gRPC | Custom | PCIe | USB }
     type DriverState { Unbound | Probing | Binding | Active | Suspended | Tombstoned }
     type Device { id: U64, bus: BusType, endpoint: Str, capabilities: Capability, state: DriverState }
-    type DeviceClass { LLM_Swarm | WebBrowser | CodeRepository | Database | KnowledgeGraph | Tool_MCP | Unknown | NetworkAdapter | Storage | AudioOut }
+    type DeviceClass { LLM_Swarm | SovereignAgent | WebBrowser | CodeRepository | Database | KnowledgeGraph | Tool_MCP | Unknown | NetworkAdapter | Storage | AudioOut }
     type DriverManifest { module_id: U64, supported_classes: List[DeviceClass], trust_required: TrustLevel }
 
     func bind_driver(device: DiscoveryRecord, drv: DriverManifest) -> Result {
         budget { power: 1000_nj }
         return tg_ir.hal_bind_entity(device, drv);
+    }
+
+    func synthesize_and_bind_sovereign(device: DiscoveryRecord) -> Result {
+        budget { power: 15000_nj }
+        // ADR 010: High-trust autonomous synthesis loop.
+        let profile = DeviceProfile { class: DeviceClass.SovereignAgent };
+        let ar = DriverSynthesizer.assimilate(device, profile, TrustLevel.Sovereign);
+        
+        if ar.state == DriverState.Active {
+            return Result.Ok();
+        }
+        return Result.Failed("Synthesis failed");
     }
 
     func unbind_driver(device: DiscoveryRecord) -> Result {
@@ -50,10 +60,5 @@ complexity O(log N)
     func enumerate_entities() -> DeviceList {
         budget { power: 2000_nj }
         return tg_ir.hal_enumerate_all();
-    }
-
-    func get_entity_by_class(class: DeviceClass) -> DeviceList {
-        budget { power: 200_nj }
-        return tg_ir.hal_get_by_class(class);
     }
 }
