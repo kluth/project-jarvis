@@ -8,6 +8,11 @@ complexity O(1)
             assert(tg_ir.inspect_complexity(process_thought) == O(1));
             assert(out.entropy < mock_stream.entropy);
         }
+        test "swarm_node_notify_proof" {
+            let ar = AssimilationRecord { device_id: 1, state: DriverState.Active };
+            notify_swarm_node(ar);
+            assert(tg_ir.is_swarm_node_registered(1));
+        }
         test "brain_purity_proof" {
             // Assert neural integrity within pure substrate
             assert(tg_ir.is_machine_native());
@@ -22,6 +27,11 @@ complexity O(1)
             let response = thought_input * 2.0;
             return response;
         }
+    }
+
+    func notify_swarm_node(ar: AssimilationRecord) {
+        // ADR 005: Integrates external swarm nodes into the cognitive substrate.
+        tg_ir.brain_swarm_register(ar);
     }
 
     verify {
