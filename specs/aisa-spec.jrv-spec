@@ -1,0 +1,29 @@
+{
+    "aisa_version": "1.0.0",
+    "name": "Agentic Instruction-Set Architecture (AISA)",
+    "description": "A hardware instruction-set architecture natively optimized for JRV substrates and AI agent orchestration.",
+    "core_primitives": [
+        {
+            "opcode": "BOUND_COMPLEXITY",
+            "mnemonic": "bcpx",
+            "description": "Hardware-level enforcement of algorithmic Big-O complexity limits per execution path. Traps if path exceeds configured bound.",
+            "operands": ["register: bounds_config"]
+        },
+        {
+            "opcode": "FORMAL_GATE",
+            "mnemonic": "fgate",
+            "description": "Hardware-level formal verification gate. Execution only proceeds if the cryptographic mathematical proof attached to the code segment resolves accurately.",
+            "operands": ["register: proof_addr", "register: code_addr"]
+        },
+        {
+            "opcode": "WAIT_FREE_SYNC",
+            "mnemonic": "wfsync",
+            "description": "Native wait-free synchronization for distributed agent nodes, atomically resolving multi-actor state transitions without locks.",
+            "operands": ["register: state_vector", "register: target_hash"]
+        }
+    ],
+    "verification_policy": {
+        "zero_sugar": true,
+        "energy_bound_strict": true
+    }
+}

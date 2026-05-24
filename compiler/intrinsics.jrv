@@ -16,6 +16,9 @@ complexity O(1)
     //   bios_interrupt(vector: i32, regs: BiosRegisters) -> BiosRegisters // 16-bit BIOS int
     //   disk_read_sector(drive: i32, lba: i32, count: i32, buffer: i32) -> i32 // Raw INT 0x13 read
     //   enter_protected_mode()                     // Transitions CPU to 32-bit Protected Mode
+    //   aisa_bound_complexity(bound: i32)          // Hardware Big-O bound
+    //   aisa_formal_gate(proof: Stream, code: Stream) // Hardware proof verification
+    //   aisa_wfsync(state: Stream, hash: i32)      // Wait-free synchronization
 
     struct InterruptVector {
         number: i32,
@@ -90,6 +93,9 @@ complexity O(1)
             assert(tg_ir.intrinsic_opcode("bios_interrupt") == 0xCD); // x86 INT imm8
             assert(tg_ir.intrinsic_opcode("disk_read_sector") == 0xCD); // x86 INT imm8
             assert(tg_ir.intrinsic_opcode("enter_protected_mode") == 0x0F); // MOV CR0 (0x0F 0x22)
+            assert(tg_ir.intrinsic_opcode("aisa_bound_complexity") == 0xBC); // AISA BCPX
+            assert(tg_ir.intrinsic_opcode("aisa_formal_gate") == 0xFG); // AISA FGATE
+            assert(tg_ir.intrinsic_opcode("aisa_wfsync") == 0xWF); // AISA WFSYNC
         }
     }
 
@@ -135,6 +141,11 @@ complexity O(1)
     }
 
     func enter_protected_mode_intrinsic() {
+        // Automatically lowers to the machine instructions necessary to disable interrupts,
+        // load the GDT, and set the PE bit in CR0, enforcing a strict transition to 32-bit PM.
+        tg_ir.set_cr0_pe();
+    }
+}rotected_mode_intrinsic() {
         // Automatically lowers to the machine instructions necessary to disable interrupts,
         // load the GDT, and set the PE bit in CR0, enforcing a strict transition to 32-bit PM.
         tg_ir.set_cr0_pe();
