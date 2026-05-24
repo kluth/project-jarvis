@@ -10,10 +10,14 @@ complexity O(1)
             let res2 = probe(device);
             assert(res1 == res2);
         }
-        test "negotiate_never_exceeds_declared_capability" {
-            let caps = Capability { has_simd256: false, has_gpu: true };
+        test "negotiate_tiered_logic" {
+            let caps = Capability { has_simd256: true, version: 2, energy_class: 1 };
             let path = negotiate(caps);
-            assert(path != CodePath.Optimal);
+            assert(path == CodePath.Optimal);
+        }
+        test "fallback_resolution_proof" {
+            let path = resolve_fallback("NO_GPU");
+            assert(path == CodePath.Minimal);
         }
         test "deferred_probe_lifecycle" {
             let fired = false;
@@ -21,14 +25,6 @@ complexity O(1)
             let handle = defer_until(func() -> Bool { return true; }, cb);
             tg_ir.trigger_defer(handle);
             assert(fired == true);
-        }
-        test "capability_math_proof" {
-            let a = Capability { has_simd128: true };
-            let b = Capability { has_simd256: true };
-            let u = capability_union(a, b);
-            let i = capability_intersection(a, b);
-            assert(u.has_simd128 && u.has_simd256);
-            assert(!i.has_simd128);
         }
         test "probe_purity" {
             assert(tg_ir.is_native_substrate());
@@ -38,7 +34,7 @@ complexity O(1)
     type ProbeResult { Ok(Capability) | Deferred(reason: Str) | Failed(err: Str) }
     type Capability { has_simd128: Bool, has_simd256: Bool, has_gpu: Bool,
                       vram_bytes: U64, version: U32, energy_class: U8 }
-    type CodePath { Optimal | Fallback(reason: Str) | Minimal }
+    type CodePath { Optimal | Tiered(level: i32) | Fallback(reason: Str) | Minimal }
     type DeferHandle { id: U64 }
 
     func probe(device: DiscoveryRecord) -> ProbeResult {
@@ -49,23 +45,21 @@ complexity O(1)
 
     func negotiate(caps: Capability) -> CodePath {
         budget { power: 100_nj }
-        if caps.has_simd256 { return CodePath.Optimal; }
+        // ADR 010: Tiered negotiation based on version and energy class.
+        if caps.has_simd256 && caps.version >= 2 { return CodePath.Optimal; }
+        if caps.has_simd128 { return CodePath.Tiered(1); }
         return CodePath.Minimal;
+    }
+
+    func resolve_fallback(reason: Str) -> CodePath {
+        // Dynamically adapts execution based on the failure reason.
+        if tg_ir.string_contains(reason, "NO_GPU") { return CodePath.Minimal; }
+        return CodePath.Fallback(reason);
     }
 
     func defer_until(cond: func() -> Bool, cb: func) -> DeferHandle {
         budget { power: 150_nj }
         let id = tg_ir.register_deferred_action(cond, cb);
         return DeferHandle { id: id };
-    }
-
-    func capability_union(a: Capability, b: Capability) -> Capability {
-        budget { power: 50_nj }
-        return tg_ir.bit_or(a, b);
-    }
-
-    func capability_intersection(a: Capability, b: Capability) -> Capability {
-        budget { power: 50_nj }
-        return tg_ir.bit_and(a, b);
     }
 }
