@@ -14,6 +14,7 @@ complexity O(1)
     //   port_write(port: i32, value: i32)          // x86 OUT
     //   mmio_map(phys: i32, len: i32) -> Stream    // identity-map MMIO region
     //   bios_interrupt(vector: i32, regs: BiosRegisters) -> BiosRegisters // 16-bit BIOS int
+    //   disk_read_sector(drive: i32, lba: i32, count: i32, buffer: i32) -> i32 // Raw INT 0x13 read
 
     struct InterruptVector {
         number: i32,
@@ -104,6 +105,15 @@ complexity O(1)
     func mmio_map_intrinsic(phys: i32, len: i32) -> MmioRegion {
         // Identity-maps `len` bytes at `phys` with cache disabled, suitable
         // for memory-mapped device registers (LAPIC, HPET, VBE LFB).
+        return MmioRegion { phys: phys, len: len, cacheable: 0 };
+    }
+
+    func bios_interrupt_intrinsic(vector: i32, regs: BiosRegisters) -> BiosRegisters {
+        // Lowers to a 16-bit INT instruction, setting up registers before
+        // and retrieving them after.
+        return tg_ir.bios_int(vector, regs);
+    }
+}VBE LFB).
         return MmioRegion { phys: phys, len: len, cacheable: 0 };
     }
 
