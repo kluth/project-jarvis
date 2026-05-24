@@ -6,6 +6,11 @@ complexity O(1)
             // Assert that we are executing raw machine instructions
             assert(tg_ir.is_machine_native());
         }
+        test "quantization_proof" {
+            let res = quantize_tensor_intrinsic(0x1000, 1024, 4);
+            assert(res == 1);
+            assert(tg_ir.is_tensor_quantized(0x1000));
+        }
         test "silicon_discovery_deterministic" {
             let res1 = interrogate_silicon();
             let res2 = interrogate_silicon();
@@ -19,5 +24,11 @@ complexity O(1)
         budget { power: 100_nj }
         // Represented by 'mrs x0, midr_el1' at the TG-IR level
         return tg_ir.asm_mrs_midr();
+    }
+
+    func quantize_tensor_intrinsic(ptr: i32, size: i32, bits: i32) -> i32 {
+        // ADR 011: Hardware-accelerated LLM quantization (4-bit/8-bit)
+        // Uses native bit-shifting and zero-copy remapping
+        return tg_ir.silicon_quantize(ptr, size, bits);
     }
 }
