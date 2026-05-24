@@ -18,6 +18,11 @@ complexity O(N)
             let valid = analyze_assertions(tg_ir.mock_ast());
             assert(valid == 1);
         }
+        test "layout_isomorphism_proof" {
+            let res = verify_layout_isomorphism("LEGACY_MAP", "NEW_MAP");
+            assert(res == 1);
+            assert(tg_ir.isomorphism_verified());
+        }
         test "verifier_purity_proof" {
             assert(tg_ir.is_pure_jrv());
         }
@@ -59,6 +64,18 @@ complexity O(N)
         if value_score == 0 {
             volatile write(0xDEAD, 2); // Weak Test Trap
             asm { "int 3" } // Halt compilation. Test pleases the compiler but proves nothing.
+        }
+
+        return 1;
+    }
+
+    func verify_layout_isomorphism(legacy_map: Stream, new_map: Stream) -> i32 {
+        // ADR 007: Validates bit-offset and alignment isomorphism between legacy and new memory blocks.
+        let is_iso = tg_ir.check_isomorphism(legacy_map, new_map);
+        
+        if is_iso == 0 {
+            volatile write(0xDEAD, 3); // Layout Corruption Trap
+            asm { "int 3" } // Halt hot-swap. ABIs are incompatible.
         }
 
         return 1;
