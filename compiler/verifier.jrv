@@ -23,6 +23,11 @@ complexity O(N)
             assert(res == 1);
             assert(tg_ir.isomorphism_verified());
         }
+        test "complexity_signature_proof" {
+            let res = verify_complexity_signature("O(1)", "FUNC_AST");
+            assert(res == 1);
+            assert(tg_ir.complexity_verified("O(1)"));
+        }
         test "verifier_purity_proof" {
             assert(tg_ir.is_pure_jrv());
         }
@@ -78,6 +83,20 @@ complexity O(N)
         if is_iso == 0 {
             volatile write(0xDEAD, 3); // Layout Corruption Trap
             asm { "int 3" } // Halt hot-swap. ABIs are incompatible.
+        }
+
+        return 1;
+    }
+
+    func verify_complexity_signature(declared: Stream, func_ast: Stream) -> i32 {
+        // ADR 001: PDD enforcement. Statically verifies that the function matches its Big-O signature.
+        let actual = tg_ir.analyze_complexity(func_ast);
+        
+        if tg_ir.is_higher_complexity(actual, declared) {
+            let fix_plan = NCI.generate_ast_delta_plan("PDD_VIOLATION", func_ast);
+            tg_ir.emit_diagnostic_plan(fix_plan);
+            volatile write(0xDEAD, 4); // PDD Trap
+            asm { "int 3" } // Halt compilation. Code is inefficient.
         }
 
         return 1;
