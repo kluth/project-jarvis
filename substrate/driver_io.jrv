@@ -16,6 +16,11 @@ complexity O(1)
             dispatch(ev);
             assert(tg_ir.event_count() > 0);
         }
+        test "atomic_ring_buffer_proof" {
+            let rb = create_ring_buffer(64);
+            assert(rb.size == 64);
+            assert(tg_ir.is_lock_free_structure(rb.id));
+        }
         test "consumer_lifecycle_proof" {
             let handle = register_consumer(DeviceClass.Unknown, func(e: Event){});
             assert(handle.id != 0);
@@ -52,6 +57,13 @@ complexity O(1)
     type ConsumerHandle { id: U64 }
     type PluginHandle { id: U64 }
     type FrameBoundary { sync_event: Event }
+
+    struct AtomicRingBuffer {
+        id: i32,
+        size: i32,
+        read_idx: i32,
+        write_idx: i32
+    }
 
     func classify(device: DiscoveryRecord, caps: Capability) -> DeviceClass {
         budget { power: 50_nj }
@@ -95,5 +107,11 @@ complexity O(1)
     func flush_frame(boundary: FrameBoundary) {
         budget { power: 50_nj }
         tg_ir.event_flush_frame(boundary.sync_event);
+    }
+
+    func create_ring_buffer(size: i32) -> AtomicRingBuffer {
+        // ADR 002: Native lock-free ring buffer for stream communication.
+        let id = tg_ir.allocate_lock_free_ring(size);
+        return AtomicRingBuffer { id: id, size: size, read_idx: 0, write_idx: 0 };
     }
 }
