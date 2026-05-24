@@ -14,6 +14,11 @@ complexity O(1) // amortized
             let result = fingerprint(record);
             assert(result.profile.class == DeviceClass.AudioOut);
         }
+        test "behavioral_analysis_proof" {
+            let entropy = analyze_behavioral_entropy(1, "INTERACTION_LOG");
+            assert(entropy > 0);
+            assert(tg_ir.behavioral_pattern_logged(1));
+        }
         test(tg_ir.is_native_substrate());
     }
 
@@ -46,5 +51,10 @@ complexity O(1) // amortized
             confidence: 0.1, 
             stage_used: FingerprintStage.BehavioralAnalysis 
         };
+    }
+
+    func analyze_behavioral_entropy(device_id: i32, log: Stream) -> i32 {
+        // ADR 010: Performs behavioral fingerprinting by analyzing interaction entropy.
+        return tg_ir.calculate_behavioral_entropy(device_id, log);
     }
 }
