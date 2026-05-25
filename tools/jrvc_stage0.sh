@@ -45,10 +45,10 @@ if [[ "$*" == *"--bootstrap"* ]]; then
             echo "[STAGE-0] Compiling $f..."
             if "$COMPILER_BIN" "$f" 2>&1; then
                 echo "  ✅ $f compiled successfully"
-                ((SUCCESS++))
+                SUCCESS=$((SUCCESS + 1))
             else
                 echo "  ⚠ $f compilation skipped (old JRV syntax or non-module)"
-                ((SUCCESS++))  # Not a failure — old syntax files exist
+                SUCCESS=$((SUCCESS + 1))  # Not a failure — old syntax files exist
             fi
         fi
     done
