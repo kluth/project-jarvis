@@ -12,6 +12,7 @@ pub mod nci;
 pub mod fixed_types;
 pub mod struct_layouts;
 pub mod memory_mgmt;
+pub mod governor_engine;
 
 #[cfg(test)]
 mod tests {

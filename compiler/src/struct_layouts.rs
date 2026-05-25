@@ -37,7 +37,7 @@ pub struct SystemMetrics {
     pub available_vram_bytes: MemoryBytes,
     pub total_allocatable_vram_bytes: MemoryBytes,
     pub pcie_bandwidth_utilization_pct: f32,
-    _padding_2: [u8; 4],
+    pub _padding_2: [u8; 4],
 }
 
 /// 24 Bytes — Static analysis step coefficients
