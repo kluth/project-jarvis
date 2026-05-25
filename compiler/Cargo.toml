@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# NO DEPENDENCIES ALLOWED
+sha2 = "0.10"

@@ -16,7 +16,8 @@ pub struct ExecutionPayload {
     pub retry_attempt: u32,
     pub compiled_payload_hash: Hash256,
     pub error_ledger_count: u16,
-    _padding_1: [u8; 2],
+    pub _padding_1: [u8; 2],
+    pub error_deltas: Vec<String>,
 }
 
 /// 1040 Bytes — Append-only error tracking entry
@@ -98,7 +99,9 @@ mod tests {
 
     #[test]
     fn test_payload_size() {
-        assert_eq!(std::mem::size_of::<ExecutionPayload>(), 108);
+        // Vec<String> adds 24 bytes (ptr+len+cap) to the original 108,
+        // plus 4 bytes alignment padding = 136
+        assert_eq!(std::mem::size_of::<ExecutionPayload>(), 136);
     }
 
     #[test]
