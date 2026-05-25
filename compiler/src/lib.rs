@@ -11,6 +11,7 @@ pub mod backend;
 pub mod nci;
 pub mod fixed_types;
 pub mod struct_layouts;
+pub mod memory_mgmt;
 
 #[cfg(test)]
 mod tests {

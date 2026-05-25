@@ -4,7 +4,7 @@ use crate::fixed_types::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExecutionSignature {
     pub node_index: NodeIndex,
-    _padding_0: [u8; 2],
+    pub _padding_0: [u8; 2],
     pub canonical_input_hash: Hash256,
     pub call_site_context_hash: Hash256,
 }
@@ -20,7 +20,7 @@ pub struct ExecutionPayload {
 }
 
 /// 1040 Bytes — Append-only error tracking entry
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct ErrorLedgerEntry {
     pub error_timestamp: u64,
     pub originating_node: NodeIndex,
