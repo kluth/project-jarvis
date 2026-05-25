@@ -262,8 +262,14 @@ complexity O(N)
         test "rereason_stmt_proof" {
             let state = ParserState { tokens: "re-reason step_0 because updated_foundation;", cursor: 0 };
             let ast = parse_rereason_stmt(state);
-            assert(ast.type_id == 42); // REREASON_STMT ID
+            assert(ast.type_id == 42);
             assert(tg_ir.is_logic_refined(ast));
+        }
+        test "recognize_stmt_proof" {
+            let state = ParserState { tokens: "re-cognize new_goal because environmental_shift;", cursor: 0 };
+            let ast = parse_recognize_stmt(state);
+            assert(ast.type_id == 43); // RECOGNIZE_STMT ID
+            assert(tg_ir.is_strategy_adapted(ast));
         }
     }
 
@@ -327,6 +333,7 @@ complexity O(N)
         if (tok == 39) { return parse_evolve_to_stmt(state); }
         if (tok == 40) { return parse_cognize_stmt(state); }
         if (tok == 41) { return parse_rereason_stmt(state); }
+        if (tok == 42) { return parse_recognize_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -568,9 +575,15 @@ complexity O(N)
     }
 
     func parse_rereason_stmt(state: ParserState) -> ASTNode {
-        // ADR 003 & 005: Parse 're-reason' primitive for dynamic logic refinement.
-        state.cursor = state.cursor + 1; // skip rereason
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 42, children: children_stream };
+    }
+
+    func parse_recognize_stmt(state: ParserState) -> ASTNode {
+        // ADR 003 & 005: Parse 're-cognize' primitive for dynamic goal adaptation.
+        state.cursor = state.cursor + 1; // skip recognize
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 43, children: children_stream };
     }
 }
