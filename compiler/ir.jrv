@@ -25,6 +25,7 @@ complexity O(1)
         AUTO_COLLAPSE: i32,
         COGNITIVE_PULSE: i32,
         DBD_SHRED: i32,
+        SUBSTRATE_QUENCH: i32,
         HALT: i32
     }
 
@@ -51,6 +52,7 @@ complexity O(1)
             assert(ops.AUTO_COLLAPSE == 19);
             assert(ops.COGNITIVE_PULSE == 20);
             assert(ops.DBD_SHRED == 21);
+            assert(ops.SUBSTRATE_QUENCH == 22);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -77,6 +79,7 @@ complexity O(1)
             AUTO_COLLAPSE: 19,
             COGNITIVE_PULSE: 20,
             DBD_SHRED: 21,
+            SUBSTRATE_QUENCH: 22,
             HALT: 0
         };
     }
