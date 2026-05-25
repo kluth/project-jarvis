@@ -16,8 +16,13 @@ fn main() {
         return;
     }
 
+    if args.contains(&"--governor".to_string()) {
+        run_governor_cli();
+        return;
+    }
+
     if args.len() < 2 {
-        println!("Usage: jrvc <file.jrv> [--mcp] [--graph] [--energy]");
+        println!("Usage: jrvc <file.jrv> [--mcp] [--graph] [--energy] [--governor]");
         process::exit(1);
     }
 
@@ -102,6 +107,31 @@ fn generate_energy_report(ast: &jarvis_compiler::ast::Node) -> String {
     }
     report.push_str("]}");
     report
+}
+
+fn run_governor_cli() {
+    use jarvis_compiler::governor_engine::GovernorEngine;
+    use jarvis_compiler::struct_layouts::*;
+
+    let metrics = SystemMetrics {
+        core_temperature_celsius: 37.2,
+        die_junction_temperature_celsius: 41.5,
+        available_vram_bytes: 68_719_476_736,
+        total_allocatable_vram_bytes: 68_719_476_736,
+        pcie_bandwidth_utilization_pct: 0.05,
+        _padding_2: [0u8; 4],
+    };
+    let ctx = DynamicContext {
+        metrics,
+        opex_limit_micro_usd: 500_000,
+        cloud_proxy_cost_per_m_tokens: 100,
+        hardware_amortization_cost_per_hour: 50,
+    };
+    let result = GovernorEngine::determine_execution_route(&ctx, &[], 0);
+    match result {
+        Ok(profile) => println!(r#"{{"profile":"{:?}","status":"ok"}}"#, profile),
+        Err(msg) => println!(r#"{{"profile":"HALT","status":"error","message":"{}"}}"#, msg),
+    }
 }
 
 use std::fs::OpenOptions;
