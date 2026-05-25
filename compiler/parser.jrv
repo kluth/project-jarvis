@@ -112,8 +112,14 @@ complexity O(N)
         test "merge_stmt_proof" {
             let state = ParserState { tokens: "merge 'node_a' with 'node_b';", cursor: 0 };
             let ast = parse_merge_stmt(state);
-            assert(ast.type_id == 17); // MERGE_STMT ID
+            assert(ast.type_id == 17);
             assert(tg_ir.is_swarm_merge(ast));
+        }
+        test "boundary_block_proof" {
+            let state = ParserState { tokens: "boundary { let x = prob { 0.5: 1 }; }", cursor: 0 };
+            let ast = parse_boundary_block(state);
+            assert(ast.type_id == 18); // BOUNDARY_BLOCK ID
+            assert(tg_ir.is_decoherence_guarded(ast));
         }
     }
 
@@ -152,6 +158,7 @@ complexity O(N)
         if (tok == 14) { return parse_budget_block(state); }
         if (tok == 15) { return parse_synapse_decl(state); }
         if (tok == 16) { return parse_merge_stmt(state); }
+        if (tok == 17) { return parse_boundary_block(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -243,9 +250,15 @@ complexity O(N)
     }
 
     func parse_merge_stmt(state: ParserState) -> ASTNode {
-        // ADR 005: Parse 'merge' primitive for swarm consolidation.
-        state.cursor = state.cursor + 1; // skip merge
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 17, children: children_stream };
+    }
+
+    func parse_boundary_block(state: ParserState) -> ASTNode {
+        // ADR 004: Parse 'boundary' block to enforce quantum decoherence.
+        state.cursor = state.cursor + 1; // skip boundary
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 18, children: children_stream };
     }
 }
