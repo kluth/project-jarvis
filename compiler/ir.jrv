@@ -27,6 +27,7 @@ complexity O(1)
         DBD_SHRED: i32,
         SUBSTRATE_QUENCH: i32,
         SWARM_TELEMETRY: i32,
+        SWARM_INTERACT: i32,
         HALT: i32
     }
 
@@ -55,6 +56,7 @@ complexity O(1)
             assert(ops.DBD_SHRED == 21);
             assert(ops.SUBSTRATE_QUENCH == 22);
             assert(ops.SWARM_TELEMETRY == 23);
+            assert(ops.SWARM_INTERACT == 24);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -83,6 +85,7 @@ complexity O(1)
             DBD_SHRED: 21,
             SUBSTRATE_QUENCH: 22,
             SWARM_TELEMETRY: 23,
+            SWARM_INTERACT: 24,
             HALT: 0
         };
     }
