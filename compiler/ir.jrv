@@ -19,6 +19,7 @@ complexity O(1)
         NEURAL_DOT: i32,
         COLLAPSE: i32,
         SWARM_VOTE: i32,
+        CORE_PIN: i32,
         HALT: i32
     }
 
@@ -39,6 +40,7 @@ complexity O(1)
             assert(ops.NEURAL_DOT == 13);
             assert(ops.COLLAPSE == 14);
             assert(ops.SWARM_VOTE == 15);
+            assert(ops.CORE_PIN == 16);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -59,6 +61,7 @@ complexity O(1)
             NEURAL_DOT: 13,
             COLLAPSE: 14,
             SWARM_VOTE: 15,
+            CORE_PIN: 16,
             HALT: 0
         };
     }
