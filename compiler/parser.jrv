@@ -100,8 +100,14 @@ complexity O(N)
         test "budget_block_proof" {
             let state = ParserState { tokens: "budget { power: 500_nj }", cursor: 0 };
             let ast = parse_budget_block(state);
-            assert(ast.type_id == 15); // BUDGET_BLOCK ID
+            assert(ast.type_id == 15);
             assert(tg_ir.is_energy_constrained(ast));
+        }
+        test "synapse_decl_proof" {
+            let state = ParserState { tokens: "synapse connect a to b weight 0.8;", cursor: 0 };
+            let ast = parse_synapse_decl(state);
+            assert(ast.type_id == 16); // SYNAPSE_DECL ID
+            assert(tg_ir.is_weighted_edge(ast));
         }
     }
 
@@ -138,6 +144,7 @@ complexity O(N)
         if (tok == 12) { return parse_macro_mapping(state); }
         if (tok == 13) { return parse_spawn_stmt(state); }
         if (tok == 14) { return parse_budget_block(state); }
+        if (tok == 15) { return parse_synapse_decl(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -217,9 +224,15 @@ complexity O(N)
     }
 
     func parse_budget_block(state: ParserState) -> ASTNode {
-        // ADR 007: Parse 'budget' block for opcode-level energy limits.
-        state.cursor = state.cursor + 1; // skip budget
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 15, children: children_stream };
+    }
+
+    func parse_synapse_decl(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'synapse' declaration for weighted edges in the graph.
+        state.cursor = state.cursor + 1; // skip synapse
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 16, children: children_stream };
     }
 }
