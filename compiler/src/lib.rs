@@ -10,6 +10,7 @@ pub mod aot;
 pub mod backend;
 pub mod nci;
 pub mod fixed_types;
+pub mod struct_layouts;
 
 #[cfg(test)]
 mod tests {
