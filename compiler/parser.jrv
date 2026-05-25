@@ -214,8 +214,14 @@ complexity O(N)
         test "rebase_stmt_proof" {
             let state = ParserState { tokens: "re-base cognitive_foundation to consensus_0;", cursor: 0 };
             let ast = parse_rebase_stmt(state);
-            assert(ast.type_id == 34); // REBASE_STMT ID
+            assert(ast.type_id == 34);
             assert(tg_ir.is_foundation_rebased(ast));
+        }
+        test "throttle_stmt_proof" {
+            let state = ParserState { tokens: "throttle execution by 50%;", cursor: 0 };
+            let ast = parse_throttle_stmt(state);
+            assert(ast.type_id == 35); // THROTTLE_STMT ID
+            assert(tg_ir.is_execution_throttled(ast));
         }
     }
 
@@ -271,6 +277,7 @@ complexity O(N)
         if (tok == 31) { return parse_project_stmt(state); }
         if (tok == 32) { return parse_anchor_stmt(state); }
         if (tok == 33) { return parse_rebase_stmt(state); }
+        if (tok == 34) { return parse_throttle_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -464,9 +471,15 @@ complexity O(N)
     }
 
     func parse_rebase_stmt(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 're-base' primitive for cognitive foundation adaptation.
-        state.cursor = state.cursor + 1; // skip rebase
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 34, children: children_stream };
+    }
+
+    func parse_throttle_stmt(state: ParserState) -> ASTNode {
+        // ADR 007: Parse 'throttle' primitive for adaptive power scaling.
+        state.cursor = state.cursor + 1; // skip throttle
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 35, children: children_stream };
     }
 }
