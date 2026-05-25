@@ -268,8 +268,14 @@ complexity O(N)
         test "recognize_stmt_proof" {
             let state = ParserState { tokens: "re-cognize new_goal because environmental_shift;", cursor: 0 };
             let ast = parse_recognize_stmt(state);
-            assert(ast.type_id == 43); // RECOGNIZE_STMT ID
+            assert(ast.type_id == 43);
             assert(tg_ir.is_strategy_adapted(ast));
+        }
+        test "remap_io_stmt_proof" {
+            let state = ParserState { tokens: "re-map-io port 0x3F8 to 0x2F8;", cursor: 0 };
+            let ast = parse_remap_io_stmt(state);
+            assert(ast.type_id == 44); // REMAP_IO_STMT ID
+            assert(tg_ir.is_io_remapped(ast));
         }
     }
 
@@ -334,6 +340,7 @@ complexity O(N)
         if (tok == 40) { return parse_cognize_stmt(state); }
         if (tok == 41) { return parse_rereason_stmt(state); }
         if (tok == 42) { return parse_recognize_stmt(state); }
+        if (tok == 43) { return parse_remap_io_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -581,9 +588,15 @@ complexity O(N)
     }
 
     func parse_recognize_stmt(state: ParserState) -> ASTNode {
-        // ADR 003 & 005: Parse 're-cognize' primitive for dynamic goal adaptation.
-        state.cursor = state.cursor + 1; // skip recognize
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 43, children: children_stream };
+    }
+
+    func parse_remap_io_stmt(state: ParserState) -> ASTNode {
+        // ADR 001 & 010: Parse 're-map-io' primitive for dynamic driver orchestration.
+        state.cursor = state.cursor + 1; // skip remap-io
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 44, children: children_stream };
     }
 }
