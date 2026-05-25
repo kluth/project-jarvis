@@ -94,8 +94,14 @@ complexity O(N)
         test "spawn_stmt_proof" {
             let state = ParserState { tokens: "spawn 'node_id';", cursor: 0 };
             let ast = parse_spawn_stmt(state);
-            assert(ast.type_id == 14); // SPAWN_STMT ID
+            assert(ast.type_id == 14);
             assert(tg_ir.is_swarm_spawn(ast));
+        }
+        test "budget_block_proof" {
+            let state = ParserState { tokens: "budget { power: 500_nj }", cursor: 0 };
+            let ast = parse_budget_block(state);
+            assert(ast.type_id == 15); // BUDGET_BLOCK ID
+            assert(tg_ir.is_energy_constrained(ast));
         }
     }
 
@@ -131,6 +137,7 @@ complexity O(N)
         if (tok == 11) { return parse_vote_stmt(state); }
         if (tok == 12) { return parse_macro_mapping(state); }
         if (tok == 13) { return parse_spawn_stmt(state); }
+        if (tok == 14) { return parse_budget_block(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -204,9 +211,15 @@ complexity O(N)
     }
 
     func parse_spawn_stmt(state: ParserState) -> ASTNode {
-        // ADR 005: Parse 'spawn' primitive for dynamic swarm scaling.
-        state.cursor = state.cursor + 1; // skip spawn
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 14, children: children_stream };
+    }
+
+    func parse_budget_block(state: ParserState) -> ASTNode {
+        // ADR 007: Parse 'budget' block for opcode-level energy limits.
+        state.cursor = state.cursor + 1; // skip budget
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 15, children: children_stream };
     }
 }
