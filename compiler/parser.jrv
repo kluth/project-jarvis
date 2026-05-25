@@ -238,8 +238,14 @@ complexity O(N)
         test "remap_stmt_proof" {
             let state = ParserState { tokens: "re-map tensor_0 to gpu_0;", cursor: 0 };
             let ast = parse_remap_stmt(state);
-            assert(ast.type_id == 38); // REMAP_STMT ID
+            assert(ast.type_id == 38);
             assert(tg_ir.is_tensor_remapped(ast));
+        }
+        test "fuse_stmt_proof" {
+            let state = ParserState { tokens: "fuse reasoning_0 with reasoning_1;", cursor: 0 };
+            let ast = parse_fuse_stmt(state);
+            assert(ast.type_id == 39); // FUSE_STMT ID
+            assert(tg_ir.is_cognitive_fused(ast));
         }
     }
 
@@ -299,6 +305,7 @@ complexity O(N)
         if (tok == 35) { return parse_reflect_stmt(state); }
         if (tok == 36) { return parse_entangle_stmt(state); }
         if (tok == 37) { return parse_remap_stmt(state); }
+        if (tok == 38) { return parse_fuse_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -516,9 +523,15 @@ complexity O(N)
     }
 
     func parse_remap_stmt(state: ParserState) -> ASTNode {
-        // ADR 003 & 011: Parse 're-map' primitive for hardware substrate adaptation.
-        state.cursor = state.cursor + 1; // skip remap
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 38, children: children_stream };
+    }
+
+    func parse_fuse_stmt(state: ParserState) -> ASTNode {
+        // ADR 003 & 005: Parse 'fuse' primitive for cognitive reason fusion.
+        state.cursor = state.cursor + 1; // skip fuse
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 39, children: children_stream };
     }
 }
