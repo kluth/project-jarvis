@@ -38,6 +38,11 @@ complexity O(N)
             assert(res == 1);
             assert(tg_ir.power_envelope_verified(1000));
         }
+        test "linear_ownership_proof" {
+            let res = verify_linear_ownership("FUNC_AST");
+            assert(res == 1);
+            assert(tg_ir.ownership_semantics_verified());
+        }
         test "genetic_optimization_proof" {
             let res = optimize_loop_genetic("LOOP_AST");
             assert(tg_ir.is_genetically_optimized(res));
@@ -137,6 +142,20 @@ complexity O(N)
             tg_ir.emit_diagnostic_plan(fix_plan);
             volatile write(0xDEAD, 6); // EFDD Trap
             asm { "int 3" } // Halt. Code is energy-inefficient.
+        }
+
+        return 1;
+    }
+
+    func verify_linear_ownership(ast: Stream) -> i32 {
+        // ADR 001 & 002: Enforces strict 'Pass-or-Process' semantics on streams.
+        let use_after_move_count = tg_ir.analyze_linear_types(ast);
+        
+        if use_after_move_count > 0 {
+            let fix_plan = NCI.generate_ast_delta_plan("LINEAR_LOGIC_VIOLATION", ast);
+            tg_ir.emit_diagnostic_plan(fix_plan);
+            volatile write(0xDEAD, 8); // Ownership Trap
+            asm { "int 3" } // Halt. Memory safety violation detected.
         }
 
         return 1;
