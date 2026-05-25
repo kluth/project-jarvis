@@ -28,6 +28,7 @@ complexity O(1)
         SUBSTRATE_QUENCH: i32,
         SWARM_TELEMETRY: i32,
         SWARM_INTERACT: i32,
+        SUBSTRATE_IGNITE: i32,
         HALT: i32
     }
 
@@ -57,6 +58,7 @@ complexity O(1)
             assert(ops.SUBSTRATE_QUENCH == 22);
             assert(ops.SWARM_TELEMETRY == 23);
             assert(ops.SWARM_INTERACT == 24);
+            assert(ops.SUBSTRATE_IGNITE == 25);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -86,6 +88,7 @@ complexity O(1)
             SUBSTRATE_QUENCH: 22,
             SWARM_TELEMETRY: 23,
             SWARM_INTERACT: 24,
+            SUBSTRATE_IGNITE: 25,
             HALT: 0
         };
     }
