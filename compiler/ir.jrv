@@ -23,6 +23,7 @@ complexity O(1)
         SWARM_SPAWN: i32,
         SWARM_MERGE: i32,
         AUTO_COLLAPSE: i32,
+        COGNITIVE_PULSE: i32,
         HALT: i32
     }
 
@@ -47,6 +48,7 @@ complexity O(1)
             assert(ops.SWARM_SPAWN == 17);
             assert(ops.SWARM_MERGE == 18);
             assert(ops.AUTO_COLLAPSE == 19);
+            assert(ops.COGNITIVE_PULSE == 20);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -71,6 +73,7 @@ complexity O(1)
             SWARM_SPAWN: 17,
             SWARM_MERGE: 18,
             AUTO_COLLAPSE: 19,
+            COGNITIVE_PULSE: 20,
             HALT: 0
         };
     }
