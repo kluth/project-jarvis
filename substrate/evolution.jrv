@@ -45,10 +45,10 @@ complexity O(1)
     }
 
     func swap(current: Node, next: Node) -> Node {
-        // RCU/Atomic Swap Simulation in JARVIS
-        // Transition to next epoch and swap pointer
+        // PFDD: Atomically swap the node pointer in the substrate.
+        // Increments the epoch to ensure zero-downtime hot-swapping.
         tg_ir.increment_epoch();
-        volatile write(0x1000, next.data);
+        tg_ir.atomic_ptr_swap(0x1000, next.data);
         return next;
     }
 

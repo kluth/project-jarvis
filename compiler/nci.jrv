@@ -40,8 +40,7 @@ complexity O(N)
     func dispatch_request(req: McpRequest) -> Stream {
         // Multi-Agent Gateway (MAG) Logic
         // Route to Anthropic, OpenAI, or Gemini via O(1) jump table
-        
-        let response = "AGENT_RESPONSE_STUB";
+        let response = tg_ir.mag_dispatch(req.method, req.params);
         return response;
     }
 
