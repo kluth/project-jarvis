@@ -160,8 +160,14 @@ complexity O(N)
         test "shield_stmt_proof" {
             let state = ParserState { tokens: "shield module_x with key_0;", cursor: 0 };
             let ast = parse_shield_stmt(state);
-            assert(ast.type_id == 25); // SHIELD_STMT ID
+            assert(ast.type_id == 25);
             assert(tg_ir.is_module_shielded(ast));
+        }
+        test "reason_stmt_proof" {
+            let state = ParserState { tokens: "reason 'step_0' because 'constraint_0';", cursor: 0 };
+            let ast = parse_reason_stmt(state);
+            assert(ast.type_id == 26); // REASON_STMT ID
+            assert(tg_ir.is_formal_reasoning(ast));
         }
     }
 
@@ -208,6 +214,7 @@ complexity O(N)
         if (tok == 22) { return parse_interact_stmt(state); }
         if (tok == 23) { return parse_ignite_stmt(state); }
         if (tok == 24) { return parse_shield_stmt(state); }
+        if (tok == 25) { return parse_reason_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -347,9 +354,15 @@ complexity O(N)
     }
 
     func parse_shield_stmt(state: ParserState) -> ASTNode {
-        // ADR 004: Parse 'shield' primitive for substrate module protection.
-        state.cursor = state.cursor + 1; // skip shield
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 25, children: children_stream };
+    }
+
+    func parse_reason_stmt(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'reason' primitive for formal cognitive logic.
+        state.cursor = state.cursor + 1; // skip reason
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 26, children: children_stream };
     }
 }
