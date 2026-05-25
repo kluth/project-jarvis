@@ -41,6 +41,20 @@ complexity O(N)
             let graph = emit_dependency_graph(ast);
             assert(tg_ir.is_valid_json_graph(graph));
         }
+        test "zero_copy_handover_proof" {
+            let res = perform_zero_copy_handover(0x1000, "NEW_NODE");
+            assert(res == 1);
+            assert(tg_ir.ownership_transferred(0x1000));
+        }
+        test "evolving_block_opt_proof" {
+            let res = optimize_evolving_block("EVOLVE_AST");
+            assert(tg_ir.is_optimally_lowerered(res));
+        }
+        test "self_host_swap_proof" {
+            let res = perform_self_host_swap("COMPILER_ELF");
+            assert(res.ok);
+            assert(tg_ir.is_compiler_hot_swapped());
+        }
     }
 
     func lower_to_elf(ast: Stream) -> Stream {
@@ -86,5 +100,10 @@ complexity O(N)
     func emit_dependency_graph(ast: Stream) -> Stream {
         // ADR 0009: Exposes the Tensor-Graph IR as a queryable JSON dependency graph.
         return tg_ir.serialize_ast_to_json_graph(ast);
+    }
+
+    func perform_self_host_swap(new_binary: Stream) -> Result {
+        // ADR 0001 & 0008: Zero-downtime hot-swap of the compiler itself.
+        return tg_ir.hot_swap_compiler_binary(new_binary);
     }
 }
