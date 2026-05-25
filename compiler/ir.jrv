@@ -18,6 +18,7 @@ complexity O(1)
         ZKP_VERIFY: i32,
         NEURAL_DOT: i32,
         COLLAPSE: i32,
+        SWARM_VOTE: i32,
         HALT: i32
     }
 
@@ -37,6 +38,7 @@ complexity O(1)
             assert(ops.ZKP_VERIFY == 12);
             assert(ops.NEURAL_DOT == 13);
             assert(ops.COLLAPSE == 14);
+            assert(ops.SWARM_VOTE == 15);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -56,6 +58,7 @@ complexity O(1)
             ZKP_VERIFY: 12,
             NEURAL_DOT: 13,
             COLLAPSE: 14,
+            SWARM_VOTE: 15,
             HALT: 0
         };
     }

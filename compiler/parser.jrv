@@ -79,6 +79,12 @@ complexity O(N)
             assert(ast.type_id == 11);
             assert(tg_ir.is_quantum_collapse(ast));
         }
+        test "vote_stmt_proof" {
+            let state = ParserState { tokens: "vote(proposal_id, 1);", cursor: 0 };
+            let ast = parse_vote_stmt(state);
+            assert(ast.type_id == 12);
+            assert(tg_ir.is_swarm_vote(ast));
+        }
     }
 
     func parse_module(state: ParserState) -> ASTNode {
@@ -110,6 +116,7 @@ complexity O(N)
         if (tok == 8) { return parse_knowledge_decl(state); }
         if (tok == 9) { return parse_neural_block(state); }
         if (tok == 10) { return parse_collapse_stmt(state); }
+        if (tok == 11) { return parse_vote_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -165,9 +172,15 @@ complexity O(N)
     }
 
     func parse_collapse_stmt(state: ParserState) -> ASTNode {
-        // ADR 004: Parse 'collapse' primitive to resolve quantum state.
-        state.cursor = state.cursor + 1; // skip collapse
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 11, children: children_stream };
+    }
+
+    func parse_vote_stmt(state: ParserState) -> ASTNode {
+        // ADR 005: Parse 'vote' primitive for distributed quorum.
+        state.cursor = state.cursor + 1; // skip vote
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 12, children: children_stream };
     }
 }
