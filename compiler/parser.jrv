@@ -226,8 +226,14 @@ complexity O(N)
         test "reflect_stmt_proof" {
             let state = ParserState { tokens: "reflect on telemetry_0;", cursor: 0 };
             let ast = parse_reflect_stmt(state);
-            assert(ast.type_id == 36); // REFLECT_STMT ID
+            assert(ast.type_id == 36);
             assert(tg_ir.is_meta_cognitive_reflect(ast));
+        }
+        test "entangle_stmt_proof" {
+            let state = ParserState { tokens: "entangle stream_a with stream_b;", cursor: 0 };
+            let ast = parse_entangle_stmt(state);
+            assert(ast.type_id == 37); // ENTANGLE_STMT ID
+            assert(tg_ir.is_quantum_entangled(ast));
         }
     }
 
@@ -285,6 +291,7 @@ complexity O(N)
         if (tok == 33) { return parse_rebase_stmt(state); }
         if (tok == 34) { return parse_throttle_stmt(state); }
         if (tok == 35) { return parse_reflect_stmt(state); }
+        if (tok == 36) { return parse_entangle_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -490,9 +497,15 @@ complexity O(N)
     }
 
     func parse_reflect_stmt(state: ParserState) -> ASTNode {
-        // ADR 003 & 009: Parse 'reflect' primitive for meta-cognitive evolution.
-        state.cursor = state.cursor + 1; // skip reflect
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 36, children: children_stream };
+    }
+
+    func parse_entangle_stmt(state: ParserState) -> ASTNode {
+        // ADR 004: Parse 'entangle' primitive for quantum correlation.
+        state.cursor = state.cursor + 1; // skip entangle
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 37, children: children_stream };
     }
 }
