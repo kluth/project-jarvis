@@ -172,8 +172,14 @@ complexity O(N)
         test "distill_stmt_proof" {
             let state = ParserState { tokens: "distill experience_0 into embedding_0;", cursor: 0 };
             let ast = parse_distill_stmt(state);
-            assert(ast.type_id == 27); // DISTILL_STMT ID
+            assert(ast.type_id == 27);
             assert(tg_ir.is_knowledge_distillation(ast));
+        }
+        test "modulate_stmt_proof" {
+            let state = ParserState { tokens: "modulate frequency to 500_mhz;", cursor: 0 };
+            let ast = parse_modulate_stmt(state);
+            assert(ast.type_id == 28); // MODULATE_STMT ID
+            assert(tg_ir.is_frequency_modulated(ast));
         }
     }
 
@@ -222,6 +228,7 @@ complexity O(N)
         if (tok == 24) { return parse_shield_stmt(state); }
         if (tok == 25) { return parse_reason_stmt(state); }
         if (tok == 26) { return parse_distill_stmt(state); }
+        if (tok == 27) { return parse_modulate_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -373,9 +380,15 @@ complexity O(N)
     }
 
     func parse_distill_stmt(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'distill' primitive for cognitive experience condensation.
-        state.cursor = state.cursor + 1; // skip distill
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 27, children: children_stream };
+    }
+
+    func parse_modulate_stmt(state: ParserState) -> ASTNode {
+        // ADR 004: Parse 'modulate' primitive for clock gating.
+        state.cursor = state.cursor + 1; // skip modulate
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 28, children: children_stream };
     }
 }
