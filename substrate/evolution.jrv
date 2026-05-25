@@ -10,7 +10,8 @@ complexity O(1)
 
     struct FixPlan {
         violation: Stream,
-        patch_id: i32
+        patch_id: i32,
+        provenance_signature: Stream
     }
 
     struct Node {
@@ -21,8 +22,8 @@ complexity O(1)
 
     verify {
         test "swap_proof" {
-            let n1 = Node { data: 0, fix_pending: 0, plan: FixPlan{violation:"none", patch_id:0} };
-            let n2 = Node { data: 1, fix_pending: 0, plan: FixPlan{violation:"none", patch_id:0} };
+            let n1 = Node { data: 0, fix_pending: 0, plan: FixPlan{violation:"none", patch_id:0, provenance_signature:"N/A"} };
+            let n2 = Node { data: 1, fix_pending: 0, plan: FixPlan{violation:"none", patch_id:0, provenance_signature:"N/A"} };
             let res = swap(n1, n2);
             assert(tg_ir.volatile_memory_read(0x1000) == n2.data);
             assert(res.data == 1);
@@ -31,6 +32,12 @@ complexity O(1)
             let res = ebr_reclaim(1); // Reclaim epoch 1
             assert(res == 1);
             assert(tg_ir.epoch_fully_quiescent(1));
+        }
+        test "fix_plan_provenance_proof" {
+            let plan = FixPlan { violation: "PDD", patch_id: 1, provenance_signature: "VALID_SIG" };
+            let res = verify_fix_plan_provenance(plan);
+            assert(res == 1);
+            assert(tg_ir.is_mag_signature_verified(plan.provenance_signature));
         }
         test "evolution_integrity" {
             assert(tg_ir.is_wait_free_substrate());
@@ -48,6 +55,16 @@ complexity O(1)
     func ebr_reclaim(epoch: i32) -> i32 {
         // ADR 0008: Safe memory reclamation after all nodes exit the target epoch.
         return tg_ir.ebr_reclaim_epoch(epoch);
+    }
+
+    func verify_fix_plan_provenance(plan: FixPlan) -> i32 {
+        // PFDD: Validates the cryptographic signature of the FixPlan from the MAG.
+        let is_valid = tg_ir.mag_verify_signature(plan.provenance_signature);
+        if is_valid == 0 {
+            volatile write(0xDEAD, 7); // Provenance Trap
+            asm { "int 3" } // Halt. Unsigned mutation attempt.
+        }
+        return 1;
     }
 
     func verify_node(node: Node) -> i32 {
