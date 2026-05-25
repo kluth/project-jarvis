@@ -31,6 +31,7 @@ complexity O(1)
         SUBSTRATE_IGNITE: i32,
         SUBSTRATE_SHIELD: i32,
         COGNITIVE_REASON: i32,
+        COGNITIVE_DISTILL: i32,
         HALT: i32
     }
 
@@ -63,6 +64,7 @@ complexity O(1)
             assert(ops.SUBSTRATE_IGNITE == 25);
             assert(ops.SUBSTRATE_SHIELD == 26);
             assert(ops.COGNITIVE_REASON == 27);
+            assert(ops.COGNITIVE_DISTILL == 28);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -95,6 +97,7 @@ complexity O(1)
             SUBSTRATE_IGNITE: 25,
             SUBSTRATE_SHIELD: 26,
             COGNITIVE_REASON: 27,
+            COGNITIVE_DISTILL: 28,
             HALT: 0
         };
     }
