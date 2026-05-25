@@ -6,6 +6,7 @@ complexity O(1)
     // Resolves ISSUE #14 — Standardized HAL Intrinsics.
     // Resolves ISSUE #26 — Native BIOS Interrupt Intrinsics.
     // Resolves ISSUE #88 — Substrate-Level Energy Profiling.
+    // Resolves ISSUE #108 — Substrate-Native SIMD Intrinsics.
 
     // Surface:
     //   interrupt(vector: i32, handler: fn(i32))   // IDT install
@@ -19,6 +20,8 @@ complexity O(1)
     //   aisa_formal_gate(proof: Stream, code: Stream) // Hardware proof verification
     //   aisa_wfsync(state: Stream, hash: i32)      // Wait-free synchronization
     //   energy_profiler() -> U64                   // Nanojoule tracking
+    //   simd_fma(a: Stream, b: Stream, c: Stream) -> Stream // Fused Multiply-Add
+    //   simd_dot(a: Stream, b: Stream) -> i32      // SIMD Dot Product
 
     struct InterruptVector {
         number: i32,
@@ -61,10 +64,15 @@ complexity O(1)
             assert(start >= 0);
             assert(tg_ir.is_energy_tracked());
         }
+        test "simd_math_proof" {
+            let res = simd_fma_intrinsic("A", "B", "C");
+            assert(tg_ir.is_vectorized_op(res));
+        }
         test "opcode_lowering_proof" {
             assert(tg_ir.intrinsic_opcode("port_read") == 0xEC);
             assert(tg_ir.intrinsic_opcode("aisa_wfsync") == 0xWF);
             assert(tg_ir.intrinsic_opcode("energy_profiler") == 0xEP);
+            assert(tg_ir.intrinsic_opcode("simd_fma") == 0x66);
         }
     }
 
@@ -111,7 +119,16 @@ complexity O(1)
     }
 
     func energy_profiler_intrinsic() -> U64 {
-        // ADR 007: Retrieves the current cumulative nanojoule consumption.
         return tg_ir.hal_get_energy_usage();
+    }
+
+    func simd_fma_intrinsic(a: Stream, b: Stream, c: Stream) -> Stream {
+        // ADR 003: Hardware-accelerated SIMD Fused Multiply-Add.
+        return tg_ir.emit_simd_fma(a, b, c);
+    }
+
+    func simd_dot_intrinsic(a: Stream, b: Stream) -> i32 {
+        // ADR 003: Hardware-accelerated SIMD Dot Product.
+        return tg_ir.emit_simd_dot(a, b);
     }
 }
