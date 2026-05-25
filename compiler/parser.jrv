@@ -190,8 +190,14 @@ complexity O(N)
         test "rewire_stmt_proof" {
             let state = ParserState { tokens: "re-wire synapse_0 to node_c;", cursor: 0 };
             let ast = parse_rewire_stmt(state);
-            assert(ast.type_id == 30); // REWIRE_STMT ID
+            assert(ast.type_id == 30);
             assert(tg_ir.is_graph_rewired(ast));
+        }
+        test "quiesce_stmt_proof" {
+            let state = ParserState { tokens: "quiesce;", cursor: 0 };
+            let ast = parse_quiesce_stmt(state);
+            assert(ast.type_id == 31); // QUIESCE_STMT ID
+            assert(tg_ir.is_swarm_quiescent(ast));
         }
     }
 
@@ -243,6 +249,7 @@ complexity O(N)
         if (tok == 27) { return parse_modulate_stmt(state); }
         if (tok == 28) { return parse_harvest_stmt(state); }
         if (tok == 29) { return parse_rewire_stmt(state); }
+        if (tok == 30) { return parse_quiesce_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -412,9 +419,15 @@ complexity O(N)
     }
 
     func parse_rewire_stmt(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 're-wire' primitive for dynamic graph configuration.
-        state.cursor = state.cursor + 1; // skip rewire
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 30, children: children_stream };
+    }
+
+    func parse_quiesce_stmt(state: ParserState) -> ASTNode {
+        // ADR 005: Parse 'quiesce' primitive for distributed energy conservation.
+        state.cursor = state.cursor + 1; // skip quiesce
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 31, children: children_stream };
     }
 }
