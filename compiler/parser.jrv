@@ -220,8 +220,14 @@ complexity O(N)
         test "throttle_stmt_proof" {
             let state = ParserState { tokens: "throttle execution by 50%;", cursor: 0 };
             let ast = parse_throttle_stmt(state);
-            assert(ast.type_id == 35); // THROTTLE_STMT ID
+            assert(ast.type_id == 35);
             assert(tg_ir.is_execution_throttled(ast));
+        }
+        test "reflect_stmt_proof" {
+            let state = ParserState { tokens: "reflect on telemetry_0;", cursor: 0 };
+            let ast = parse_reflect_stmt(state);
+            assert(ast.type_id == 36); // REFLECT_STMT ID
+            assert(tg_ir.is_meta_cognitive_reflect(ast));
         }
     }
 
@@ -278,6 +284,7 @@ complexity O(N)
         if (tok == 32) { return parse_anchor_stmt(state); }
         if (tok == 33) { return parse_rebase_stmt(state); }
         if (tok == 34) { return parse_throttle_stmt(state); }
+        if (tok == 35) { return parse_reflect_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -477,9 +484,15 @@ complexity O(N)
     }
 
     func parse_throttle_stmt(state: ParserState) -> ASTNode {
-        // ADR 007: Parse 'throttle' primitive for adaptive power scaling.
-        state.cursor = state.cursor + 1; // skip throttle
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 35, children: children_stream };
+    }
+
+    func parse_reflect_stmt(state: ParserState) -> ASTNode {
+        // ADR 003 & 009: Parse 'reflect' primitive for meta-cognitive evolution.
+        state.cursor = state.cursor + 1; // skip reflect
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 36, children: children_stream };
     }
 }
