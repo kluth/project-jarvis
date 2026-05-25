@@ -1,0 +1,54 @@
+module LanguageServer
+complexity O(N)
+{
+    budget { power: 5000_nj }
+
+    struct Diagnostic {
+        severity: i32, // 1=Error, 2=Warning, 3=Info
+        message: Stream,
+        line: i32,
+        column: i32,
+        fix_plan: Stream // Optional Machine-Apply-Ready Patch
+    }
+
+    verify {
+        test "real_time_diagnostic_proof" {
+            let src = "let x = ;"; // Syntax error
+            let diags = analyze_source(src);
+            assert(diags.count > 0);
+            assert(tg_ir.has_parser_failure(diags));
+        }
+        test "auto_fix_generation_proof" {
+            let src = "func test() { assert(1 == 2); }"; // eTDD failure
+            let diags = analyze_source(src);
+            let fix = diags.get(0).fix_plan;
+            assert(fix != "");
+            assert(tg_ir.is_valid_lsp_patch(fix));
+        }
+    }
+
+    func analyze_source(source: Stream) -> Stream[Diagnostic] {
+        // ADR 009: Real-time analysis for both humans and AI agents.
+        // It runs the Lexer, Parser, and Verifier in "Draft" mode.
+        let ast = Parser.parse_draft(source);
+        let diags = tg_ir.create_stream();
+        
+        if ast.has_errors {
+            diags.append(Diagnostic { severity: 1, message: ast.error_msg, line: ast.line, column: ast.col, fix_plan: "" });
+            return diags;
+        }
+
+        let v_res = OmegaVerifier.enforce_etdd(ast);
+        if !v_res.passed {
+            let plan = NCI.generate_ast_delta_plan("LSP_ETDD_VIOLATION", ast);
+            diags.append(Diagnostic { severity: 1, message: "eTDD violation", line: 0, column: 0, fix_plan: plan });
+        }
+
+        return diags;
+    }
+
+    func get_hover_info(source: Stream, line: i32, col: i32) -> Stream {
+        // Provides detailed Big-O and Energy usage info for the symbol under cursor.
+        return tg_ir.calculate_symbol_metadata(source, line, col);
+    }
+}
