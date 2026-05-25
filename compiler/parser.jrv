@@ -202,8 +202,14 @@ complexity O(N)
         test "project_stmt_proof" {
             let state = ParserState { tokens: "project cognitive_state to surface_0;", cursor: 0 };
             let ast = parse_project_stmt(state);
-            assert(ast.type_id == 32); // PROJECT_STMT ID
+            assert(ast.type_id == 32);
             assert(tg_ir.is_cognitive_projected(ast));
+        }
+        test "anchor_stmt_proof" {
+            let state = ParserState { tokens: "anchor node_0 state to record_0;", cursor: 0 };
+            let ast = parse_anchor_stmt(state);
+            assert(ast.type_id == 33); // ANCHOR_STMT ID
+            assert(tg_ir.is_state_anchored(ast));
         }
     }
 
@@ -257,6 +263,7 @@ complexity O(N)
         if (tok == 29) { return parse_rewire_stmt(state); }
         if (tok == 30) { return parse_quiesce_stmt(state); }
         if (tok == 31) { return parse_project_stmt(state); }
+        if (tok == 32) { return parse_anchor_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -438,9 +445,15 @@ complexity O(N)
     }
 
     func parse_project_stmt(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'project' primitive for cognitive visualization.
-        state.cursor = state.cursor + 1; // skip project
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 32, children: children_stream };
+    }
+
+    func parse_anchor_stmt(state: ParserState) -> ASTNode {
+        // ADR 006: Parse 'anchor' primitive for verifiable state records.
+        state.cursor = state.cursor + 1; // skip anchor
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 33, children: children_stream };
     }
 }
