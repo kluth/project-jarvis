@@ -232,8 +232,14 @@ complexity O(N)
         test "entangle_stmt_proof" {
             let state = ParserState { tokens: "entangle stream_a with stream_b;", cursor: 0 };
             let ast = parse_entangle_stmt(state);
-            assert(ast.type_id == 37); // ENTANGLE_STMT ID
+            assert(ast.type_id == 37);
             assert(tg_ir.is_quantum_entangled(ast));
+        }
+        test "remap_stmt_proof" {
+            let state = ParserState { tokens: "re-map tensor_0 to gpu_0;", cursor: 0 };
+            let ast = parse_remap_stmt(state);
+            assert(ast.type_id == 38); // REMAP_STMT ID
+            assert(tg_ir.is_tensor_remapped(ast));
         }
     }
 
@@ -292,6 +298,7 @@ complexity O(N)
         if (tok == 34) { return parse_throttle_stmt(state); }
         if (tok == 35) { return parse_reflect_stmt(state); }
         if (tok == 36) { return parse_entangle_stmt(state); }
+        if (tok == 37) { return parse_remap_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -503,9 +510,15 @@ complexity O(N)
     }
 
     func parse_entangle_stmt(state: ParserState) -> ASTNode {
-        // ADR 004: Parse 'entangle' primitive for quantum correlation.
-        state.cursor = state.cursor + 1; // skip entangle
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 37, children: children_stream };
+    }
+
+    func parse_remap_stmt(state: ParserState) -> ASTNode {
+        // ADR 003 & 011: Parse 're-map' primitive for hardware substrate adaptation.
+        state.cursor = state.cursor + 1; // skip remap
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 38, children: children_stream };
     }
 }
