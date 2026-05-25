@@ -208,8 +208,14 @@ complexity O(N)
         test "anchor_stmt_proof" {
             let state = ParserState { tokens: "anchor node_0 state to record_0;", cursor: 0 };
             let ast = parse_anchor_stmt(state);
-            assert(ast.type_id == 33); // ANCHOR_STMT ID
+            assert(ast.type_id == 33);
             assert(tg_ir.is_state_anchored(ast));
+        }
+        test "rebase_stmt_proof" {
+            let state = ParserState { tokens: "re-base cognitive_foundation to consensus_0;", cursor: 0 };
+            let ast = parse_rebase_stmt(state);
+            assert(ast.type_id == 34); // REBASE_STMT ID
+            assert(tg_ir.is_foundation_rebased(ast));
         }
     }
 
@@ -264,6 +270,7 @@ complexity O(N)
         if (tok == 30) { return parse_quiesce_stmt(state); }
         if (tok == 31) { return parse_project_stmt(state); }
         if (tok == 32) { return parse_anchor_stmt(state); }
+        if (tok == 33) { return parse_rebase_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -451,9 +458,15 @@ complexity O(N)
     }
 
     func parse_anchor_stmt(state: ParserState) -> ASTNode {
-        // ADR 006: Parse 'anchor' primitive for verifiable state records.
-        state.cursor = state.cursor + 1; // skip anchor
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 33, children: children_stream };
+    }
+
+    func parse_rebase_stmt(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 're-base' primitive for cognitive foundation adaptation.
+        state.cursor = state.cursor + 1; // skip rebase
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 34, children: children_stream };
     }
 }

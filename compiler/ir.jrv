@@ -38,6 +38,7 @@ complexity O(1)
         SWARM_QUIESCE: i32,
         COGNITIVE_PROJECT: i32,
         SUBSTRATE_ANCHOR: i32,
+        COGNITIVE_REBASE: i32,
         HALT: i32
     }
 
@@ -77,6 +78,7 @@ complexity O(1)
             assert(ops.SWARM_QUIESCE == 32);
             assert(ops.COGNITIVE_PROJECT == 33);
             assert(ops.SUBSTRATE_ANCHOR == 34);
+            assert(ops.COGNITIVE_REBASE == 35);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -116,6 +118,7 @@ complexity O(1)
             SWARM_QUIESCE: 32,
             COGNITIVE_PROJECT: 33,
             SUBSTRATE_ANCHOR: 34,
+            COGNITIVE_REBASE: 35,
             HALT: 0
         };
     }
