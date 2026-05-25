@@ -46,6 +46,7 @@ complexity O(1)
         COGNITIVE_FUSE: i32,
         SUBSTRATE_EVOLVE_TO: i32,
         COGNITIVE_COGNIZE: i32,
+        COGNITIVE_REREASON: i32,
         HALT: i32
     }
 
@@ -93,6 +94,7 @@ complexity O(1)
             assert(ops.COGNITIVE_FUSE == 40);
             assert(ops.SUBSTRATE_EVOLVE_TO == 41);
             assert(ops.COGNITIVE_COGNIZE == 42);
+            assert(ops.COGNITIVE_REREASON == 43);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -140,6 +142,7 @@ complexity O(1)
             COGNITIVE_FUSE: 40,
             SUBSTRATE_EVOLVE_TO: 41,
             COGNITIVE_COGNIZE: 42,
+            COGNITIVE_REREASON: 43,
             HALT: 0
         };
     }

@@ -256,8 +256,14 @@ complexity O(N)
         test "cognize_stmt_proof" {
             let state = ParserState { tokens: "cognize goal 'optimize_throughput';", cursor: 0 };
             let ast = parse_cognize_stmt(state);
-            assert(ast.type_id == 41); // COGNIZE_STMT ID
+            assert(ast.type_id == 41);
             assert(tg_ir.is_goal_oriented_cognition(ast));
+        }
+        test "rereason_stmt_proof" {
+            let state = ParserState { tokens: "re-reason step_0 because updated_foundation;", cursor: 0 };
+            let ast = parse_rereason_stmt(state);
+            assert(ast.type_id == 42); // REREASON_STMT ID
+            assert(tg_ir.is_logic_refined(ast));
         }
     }
 
@@ -320,6 +326,7 @@ complexity O(N)
         if (tok == 38) { return parse_fuse_stmt(state); }
         if (tok == 39) { return parse_evolve_to_stmt(state); }
         if (tok == 40) { return parse_cognize_stmt(state); }
+        if (tok == 41) { return parse_rereason_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -555,9 +562,15 @@ complexity O(N)
     }
 
     func parse_cognize_stmt(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'cognize' primitive for goal-oriented autonomous planning.
-        state.cursor = state.cursor + 1; // skip cognize
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 41, children: children_stream };
+    }
+
+    func parse_rereason_stmt(state: ParserState) -> ASTNode {
+        // ADR 003 & 005: Parse 're-reason' primitive for dynamic logic refinement.
+        state.cursor = state.cursor + 1; // skip rereason
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 42, children: children_stream };
     }
 }
