@@ -184,8 +184,14 @@ complexity O(N)
         test "harvest_stmt_proof" {
             let state = ParserState { tokens: "harvest from 'sensor_0';", cursor: 0 };
             let ast = parse_harvest_stmt(state);
-            assert(ast.type_id == 29); // HARVEST_STMT ID
+            assert(ast.type_id == 29);
             assert(tg_ir.is_entropy_harvested(ast));
+        }
+        test "rewire_stmt_proof" {
+            let state = ParserState { tokens: "re-wire synapse_0 to node_c;", cursor: 0 };
+            let ast = parse_rewire_stmt(state);
+            assert(ast.type_id == 30); // REWIRE_STMT ID
+            assert(tg_ir.is_graph_rewired(ast));
         }
     }
 
@@ -236,6 +242,7 @@ complexity O(N)
         if (tok == 26) { return parse_distill_stmt(state); }
         if (tok == 27) { return parse_modulate_stmt(state); }
         if (tok == 28) { return parse_harvest_stmt(state); }
+        if (tok == 29) { return parse_rewire_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -399,9 +406,15 @@ complexity O(N)
     }
 
     func parse_harvest_stmt(state: ParserState) -> ASTNode {
-        // ADR 004: Parse 'harvest' primitive for substrate entropy scavenging.
-        state.cursor = state.cursor + 1; // skip harvest
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 29, children: children_stream };
+    }
+
+    func parse_rewire_stmt(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 're-wire' primitive for dynamic graph configuration.
+        state.cursor = state.cursor + 1; // skip rewire
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 30, children: children_stream };
     }
 }

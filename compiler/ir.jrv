@@ -34,6 +34,7 @@ complexity O(1)
         COGNITIVE_DISTILL: i32,
         SUBSTRATE_MODULATE: i32,
         SUBSTRATE_HARVEST: i32,
+        SWARM_REWIRE: i32,
         HALT: i32
     }
 
@@ -69,6 +70,7 @@ complexity O(1)
             assert(ops.COGNITIVE_DISTILL == 28);
             assert(ops.SUBSTRATE_MODULATE == 29);
             assert(ops.SUBSTRATE_HARVEST == 30);
+            assert(ops.SWARM_REWIRE == 31);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -104,6 +106,7 @@ complexity O(1)
             COGNITIVE_DISTILL: 28,
             SUBSTRATE_MODULATE: 29,
             SUBSTRATE_HARVEST: 30,
+            SWARM_REWIRE: 31,
             HALT: 0
         };
     }
