@@ -1,5 +1,6 @@
 use std::fs;
 use std::env;
+use std::process;
 use std::io::{self, BufRead, Write};
 use jarvis_compiler::lexer::Lexer;
 use jarvis_compiler::parser::Parser;
@@ -17,7 +18,7 @@ fn main() {
 
     if args.len() < 2 {
         println!("Usage: jrvc <file.jrv> [--mcp] [--graph] [--energy]");
-        return;
+        process::exit(1);
     }
 
     let file_path = &args[1];
@@ -53,13 +54,22 @@ fn main() {
                             fs::write("output.elf", &binary).expect("Failed to write ELF");
                             println!("AOT Production ELF Generated ({} bytes) -> output.elf", binary.len());
                         }
-                        Err(e) => println!("Backend Error: {}", e),
+                        Err(e) => {
+                            println!("Backend Error: {}", e);
+                            process::exit(1);
+                        }
                     }
                 }
-                Err(e) => println!("Verification Error: {}", e),
+                Err(e) => {
+                    println!("Verification Error: {}", e);
+                    process::exit(1);
+                }
             }
         }
-        Err(e) => println!("Parser Error: {:?}", e),
+        Err(e) => {
+            println!("Parser Error: {:?}", e);
+            process::exit(1);
+        }
     }
 }
 
