@@ -28,8 +28,7 @@ jobs:
       - name: Check for TODO/FIXME/HACK markers
         run: |
           echo "Checking for leftover development markers..."
-          FOUND=$(grep -rn "TODO\|FIXME\|HACK\|XXX\|BUG" --include='*.rs' --include='*.jrv' --include='*.md' . \
-            --exclude-dir=target --exclude-dir=.git --exclude-dir=node_modules 2>/dev/null | grep -v ".fingerprint" | grep -v "Cargo.lock" || true)
+          FOUND=$(grep -rn "TODO\|FIXME\|HACK\|XXX\|BUG" --include='*.rs' --include='*.jrv' --include='*.md' .             --exclude-dir=target --exclude-dir=.git --exclude-dir=node_modules 2>/dev/null | grep -v ".fingerprint" | grep -v "Cargo.lock" || true)
           if [ -n "$FOUND" ]; then
             echo "⚠ Found TODO/FIXME/HACK markers:"
             echo "$FOUND" | head -30
@@ -41,8 +40,7 @@ jobs:
       - name: Check for debug print/println left in production code
         run: |
           echo "Checking for debug statements in .rs files..."
-          FOUND=$(grep -rn "dbg!\|eprintln\|println!" --include='*.rs' compiler/src/ \
-            --exclude-dir=target 2>/dev/null | grep -v "test_" | grep -v "// " || true)
+          FOUND=$(grep -rn "dbg!\|eprintln\|println!" --include='*.rs' compiler/src/             --exclude-dir=target 2>/dev/null | grep -v "test_" | grep -v "// " || true)
           if [ -n "$FOUND" ]; then
             echo "⚠ Debug statements found:"
             echo "$FOUND"
@@ -71,9 +69,7 @@ jobs:
       - name: Check for secrets in commit history
         run: |
           echo "Scanning for potential secrets in code..."
-          git log --all -p 2>/dev/null | grep -n "api_key\|password\|secret\|token\|-----BEGIN" \
-            --include='*.rs' --include='*.jrv' --include='*.json' \
-            | grep -v "test_" | grep -v "github_pat_" | head -10 || echo "✅ No secrets detected"
+          git log --all -p 2>/dev/null | grep -n "api_key\|password\|secret\|token\|-----BEGIN"             --include='*.rs' --include='*.jrv' --include='*.json'             | grep -v "test_" | grep -v "github_pat_" | head -10 || echo "✅ No secrets detected"
 
   coverage:
     name: Code Coverage Map
@@ -107,13 +103,14 @@ jobs:
       - name: Count tests
         run: |
           RUST_TESTS=$(grep -rn "#\[test\]" --include='*.rs' . --exclude-dir=target 2>/dev/null | wc -l)
-          JRV_TESTS=$(grep -rn "test \"" --include='*.jrv' . --exclude-dir=target 2>/dev/null | wc -l)
+          JRV_TESTS=$(grep -rn 'test "' --include='*.jrv' . --exclude-dir=target 2>/dev/null | wc -l)
           echo "Rust tests: $RUST_TESTS" >> $GITHUB_STEP_SUMMARY
           echo "JRV tests: $JRV_TESTS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
   stage0-check:
     name: Stage-0 Bootstrap Check
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
