@@ -14,7 +14,8 @@ complexity O(1)
         canonical_bgr24_write: i32,
         branchless_cascade: i32,
         no_panic: i32,
-        const_palette_immediate: i32
+        const_palette_immediate: i32,
+        npu_tensor_fusion: i32
     }
 
     struct Diagnostic {
@@ -76,6 +77,13 @@ complexity O(1)
             // empty or stripped of the loop label.
             assert(tg_ir.emit_asm_includes_label("render_scanline"));
         }
+        test "npu_tensor_fusion_clause_proof" {
+            // Clause 7: Any matrix multiplication inside an #[inner_loop] MUST
+            // map directly to an NPU MAC sequence, rejecting scalar fallback loops.
+            let body = tg_ir.mock_inner_loop_body("tensor_math");
+            assert(check_npu_tensor_fusion(body) == 1);
+            assert(tg_ir.scalar_fallback_count(body) == 0);
+        }
     }
 
     func check_no_heap(body: Stream) -> i32 {
@@ -136,6 +144,17 @@ complexity O(1)
         let loads = tg_ir.palette_loads_from_memory(body);
         if loads > 0 {
             volatile write(0xDEAD, 16);
+            asm { "int 3" }
+        }
+        return 1;
+    }
+
+    func check_npu_tensor_fusion(body: Stream) -> i32 {
+        // Enforces ADR 003 within the inner loop contract:
+        // Tensor math must not fallback to scalar loops.
+        let scalar_fallbacks = tg_ir.scalar_fallback_count(body);
+        if scalar_fallbacks > 0 {
+            volatile write(0xDEAD, 17);
             asm { "int 3" }
         }
         return 1;
