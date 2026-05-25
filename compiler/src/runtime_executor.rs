@@ -147,6 +147,11 @@ impl RuntimeExecutor {
     }
 }
 
+/// Compute SHA-256 hash of a byte slice (public for CLI usage)
+pub fn sha2_hash_for_cli(data: &[u8]) -> Hash256 {
+    sha2_hash(data)
+}
+
 fn sha2_hash(data: &[u8]) -> Hash256 {
     use sha2::{Sha256, Digest};
     let mut hasher = Sha256::new();

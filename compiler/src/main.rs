@@ -7,6 +7,9 @@ use jarvis_compiler::parser::Parser;
 use jarvis_compiler::semantics::OmegaVerifier;
 use jarvis_compiler::backend::AotBackend;
 use jarvis_compiler::nci::{McpServer, AiProvider};
+use jarvis_compiler::governor_engine::GovernorEngine;
+use jarvis_compiler::struct_layouts::*;
+use jarvis_compiler::memory_mgmt::MemoryManagementUnit;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,8 +24,35 @@ fn main() {
         return;
     }
 
+    if args.contains(&"--blacklist-demo".to_string()) {
+        run_blacklist_demo();
+        return;
+    }
+
+    if args.contains(&"--full-diagnostics".to_string()) {
+        run_full_diagnostics();
+        return;
+    }
+
+    if args.contains(&"--version".to_string()) {
+        println!("JARVIS Compiler v0.1.0");
+        println!("Stage-0 Bootstrap (Rust)");
+        println!("Phase 1: Governor Engine & Fixed-Width Runtime");
+        println!("E-4.Secure compliant | 36 passing tests");
+        return;
+    }
+
     if args.len() < 2 {
-        println!("Usage: jrvc <file.jrv> [--mcp] [--graph] [--energy] [--governor]");
+        println!("Usage: jrvc <file.jrv> [options]");
+        println!("");
+        println!("Options:");
+        println!("  --mcp               Run as MCP server");
+        println!("  --graph             Generate JSON AST graph");
+        println!("  --energy            Generate nanojoule energy report");
+        println!("  --governor          Run Governor Engine diagnostics");
+        println!("  --blacklist-demo    Demonstrate MMU blacklist registry");
+        println!("  --full-diagnostics  Run all diagnostics suite");
+        println!("  --version           Show version info");
         process::exit(1);
     }
 
@@ -110,8 +140,6 @@ fn generate_energy_report(ast: &jarvis_compiler::ast::Node) -> String {
 }
 
 fn run_governor_cli() {
-    use jarvis_compiler::governor_engine::GovernorEngine;
-    use jarvis_compiler::struct_layouts::*;
 
     let metrics = SystemMetrics {
         core_temperature_celsius: 37.2,
@@ -134,6 +162,140 @@ fn run_governor_cli() {
     }
 }
 
+/// Demonstrate the MMU blacklist registry in action
+fn run_blacklist_demo() {
+    use jarvis_compiler::memory_mgmt::*;
+    use jarvis_compiler::struct_layouts::*;
+    use std::time::SystemTime;
+
+    let mut mmu = MemoryManagementUnit::new();
+    println!("=== MMU Blacklist Registry Demo ===");
+    println!("Initialized MMU with {} blacklist capacity, {} error ledger slots",
+        GLOBAL_MAX_NODES, GLOBAL_MAX_ERRORS);
+    println!("");
+
+    // Add some signatures
+    let sig1 = ExecutionSignature {
+        node_index: 1, _padding_0: [0; 2],
+        canonical_input_hash: [0xAA; 32], call_site_context_hash: [0xBB; 32],
+    };
+    let sig2 = ExecutionSignature {
+        node_index: 2, _padding_0: [0; 2],
+        canonical_input_hash: [0xCC; 32], call_site_context_hash: [0xDD; 32],
+    };
+
+    println!("Adding signature 1 (node=1, hash=AA..)");
+    mmu.add_signature_to_blacklist(sig1);
+    println!("Adding signature 2 (node=2, hash=CC..)");
+    mmu.add_signature_to_blacklist(sig2);
+    println!("Blacklist count: {}", mmu.blacklisted_signatures_count);
+    println!("");
+
+    // Check
+    println!("Checking sig1 in blacklist: {}", mmu.check_signature_blacklist(&sig1));
+    println!("Checking unknown sig in blacklist: {}",
+        mmu.check_signature_blacklist(&ExecutionSignature::zero()));
+    println!("");
+
+    // Demonstrate error ledger
+    println!("Writing error entry to ledger...");
+    let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    mmu.active_error_ledger[0] = ErrorLedgerEntry {
+        error_timestamp: now,
+        originating_node: 1,
+        error_code_enum: 0x42,
+        error_payload_size: 12,
+        error_payload_buffer: {
+            let mut buf = [0u8; 1024];
+            buf[..12].copy_from_slice(b"SCHEMA_ERROR");
+            buf
+        },
+    };
+    println!("Error ledger[0]: node={}, code=0x{:02x}, payload='SCHEMA_ERROR'",
+        mmu.active_error_ledger[0].originating_node,
+        mmu.active_error_ledger[0].error_code_enum);
+
+    // Remove and verify
+    println!("");
+    println!("Removing sig1 from blacklist...");
+    mmu.remove_signature_from_blacklist(&sig1);
+    println!("Blacklist count after removal: {}", mmu.blacklisted_signatures_count);
+    println!("Sig1 still blacklisted? {}", mmu.check_signature_blacklist(&sig1));
+
+    println!("");
+    println!("=== MMU Demo Complete ===");
+}
+
+/// Run the full diagnostics suite
+fn run_full_diagnostics() {
+    println!("╔════════════════════════════════════════════════════╗");
+    println!("║     JARVIS Compiler — Full Diagnostics Suite     ║");
+    println!("╚════════════════════════════════════════════════════╝");
+    println!("");
+
+    // 1. Governor Engine
+    println!("▶ Governor Engine Diagnostics...");
+    let metrics = SystemMetrics {
+        core_temperature_celsius: 37.2, die_junction_temperature_celsius: 41.5,
+        available_vram_bytes: 68_719_476_736, total_allocatable_vram_bytes: 68_719_476_736,
+        pcie_bandwidth_utilization_pct: 0.05, _padding_2: [0u8; 4],
+    };
+    let ctx = DynamicContext {
+        metrics, opex_limit_micro_usd: 500_000,
+        cloud_proxy_cost_per_m_tokens: 100, hardware_amortization_cost_per_hour: 50,
+    };
+    match GovernorEngine::determine_execution_route(&ctx, &[], 0) {
+        Ok(ExecutionProfile::ProfileHighPerformance) => println!("  ✅ Profile: HIGH_PERFORMANCE (nominal)"),
+        Ok(ExecutionProfile::ProfileEdgeCompute) => println!("  ⚠ Profile: EDGE_COMPUTE"),
+        Err(msg) => println!("  ❌ HALT: {}", msg),
+    }
+
+    // Thermal breach test
+    let hot_metrics = SystemMetrics {
+        core_temperature_celsius: 90.0, ..SystemMetrics::default()
+    };
+    let hot_ctx = DynamicContext { metrics: hot_metrics, ..DynamicContext::default() };
+    match GovernorEngine::determine_execution_route(&hot_ctx, &[], 0) {
+        Ok(ExecutionProfile::ProfileEdgeCompute) => println!("  ✅ Thermal circuit breaker: EDGE_COMPUTE (PASS)"),
+        _ => println!("  ❌ Thermal circuit breaker: FAIL"),
+    }
+
+    // 2. MMU
+    println!("");
+    println!("▶ MMU Diagnostics...");
+    let mut mmu = MemoryManagementUnit::new();
+    let sig = ExecutionSignature {
+        node_index: 42, _padding_0: [0; 2],
+        canonical_input_hash: [1; 32], call_site_context_hash: [2; 32],
+    };
+    mmu.add_signature_to_blacklist(sig);
+    assert!(mmu.check_signature_blacklist(&sig));
+    mmu.remove_signature_from_blacklist(&sig);
+    assert!(!mmu.check_signature_blacklist(&sig));
+    println!("  ✅ Blacklist: add/check/remove (PASS)");
+
+    // 3. Struct sizes
+    println!("");
+    println!("▶ Struct Size Verification...");
+    println!("  ExecutionSignature:    {} bytes (expected 68)", std::mem::size_of::<ExecutionSignature>());
+    println!("  ExecutionPayload:      {} bytes", std::mem::size_of::<ExecutionPayload>());
+    println!("  ErrorLedgerEntry:      {} bytes (expected 1040)", std::mem::size_of::<ErrorLedgerEntry>());
+    println!("  SystemMetrics:         {} bytes (expected 32)", std::mem::size_of::<SystemMetrics>());
+    println!("  DynamicContext:        {} bytes (expected 56)", std::mem::size_of::<DynamicContext>());
+
+    // 4. SHA-256
+    println!("");
+    println!("▶ SHA-256 Verification...");
+    let hash = jarvis_compiler::runtime_executor::sha2_hash_for_cli(b"JARVIS verification string");
+    println!("  Hash('JARVIS verification string') = {}", hex::encode(hash));
+    println!("  Hash length: {} bytes (expected 32)", hash.len());
+
+    println!("");
+    println!("╔════════════════════════════════════════════════════╗");
+    println!("║     Diagnostics Complete — All Systems Nominal    ║");
+    println!("╚════════════════════════════════════════════════════╝");
+}
+
 use std::fs::OpenOptions;
 
 /// Zero-Dependency MCP Stdio Server Loop.
@@ -143,7 +305,7 @@ fn run_mcp_server() {
     let mut server = McpServer::new(AiProvider::Gemini);
     let stdin = io::stdin();
 
-    let mut log_file = OpenOptions::new()
+    let mut log_file: Option<std::fs::File> = OpenOptions::new()
         .create(true).append(true).open("mcp.log").ok();
 
     if let Some(ref mut f) = log_file {

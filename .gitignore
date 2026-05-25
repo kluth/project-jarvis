@@ -1,9 +1,8 @@
-# Project JARVIS: Rev 7.0 Total Substrate Purity
+# Project JARVIS: Rev 7.0 Build Artifacts
+# Rust source and Cargo config are NOT ignored — Stage-0 bootstrap.
+
+# Build output directories
 **/target/
-*.rs
-*.rs.bk
-Cargo.toml
-Cargo.lock
 
 # Binary Noise & Bootstrap Artifacts
 *.elf
@@ -15,3 +14,14 @@ dashboard.txt
 # OS Junk
 .DS_Store
 .env
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp files
+*.tmp
+*.bak

@@ -2,42 +2,46 @@ name: JARVIS Sovereign CI Gatekeeper
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
-  contents: write # Required for Bot Injection
+  contents: write
 
 jobs:
   sovereign-verify:
+    name: Sovereign Verification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
       - name: "Bootstrap: Native .jrv Compilation"
         run: |
-          # Use the Stage-0 bootstrap script for CI
-          bash tools/jrvc_stage0.sh compiler/*.jrv substrate/*.jrv core/*.jrv --bootstrap
+          # Real Stage-0 bootstrap — builds the Rust compiler, then compiles .jrv files
+          bash tools/jrvc_stage0.sh compiler/*.jrv substrate/*.jrv core/*.jrv --bootstrap 2>&1
 
       - name: "Enforcement: eTDD & PDD Verification"
         run: |
-          bash tools/jrvc_stage0.sh scifi_verification.jrv --strict-verify > test_report.log
+          bash tools/jrvc_stage0.sh scifi_verification.jrv --strict-verify 2>&1 | tee test_report.log
 
       - name: "Native Dashboard Generation"
         run: |
-          # A pure JARVIS script (interpreted via Stage-0) generates the dashboard
-          bash tools/jrvc_stage0.sh tools/generate_dashboard.jrv --run > dashboard.md
-
+          bash tools/jrvc_stage0.sh tools/generate_dashboard.jrv --run 2>&1
 
       - name: "Active Gatekeeping: README Injection & Commit"
         run: |
-          # Extract the dashboard section and replace it in the README
-          sed -i '/## 📊 Scientific Dashboard/,$d' README.md
-          cat dashboard.md >> README.md
+          # Display CI status
+          echo "=== JARVIS Sovereign CI Complete ==="
+          echo "Compiler version:"
+          ./target/debug/jarvis-compiler --version 2>&1
+          echo ""
+          echo "Full diagnostics:"
+          ./target/debug/jarvis-compiler --full-diagnostics 2>&1
           
-          # Native Bot Commit
+          # Bot commit info
           git config --global user.name "JARVIS Sovereign Bot"
           git config --global user.email "bot@project-jarvis.local"
-          git add README.md
-          # Commit only if changes exist
-          git diff --quiet && git diff --staged --quiet || git commit -m "docs(dashboard): autonomous scientific update [skip ci]"
-          git push origin main

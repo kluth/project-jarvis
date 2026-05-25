@@ -1,0 +1,122 @@
+name: 📦 Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v0.2.0)'
+        required: false
+        default: 'v0.2.0'
+      prerelease:
+        description: 'Mark as prerelease'
+        type: boolean
+        default: false
+
+jobs:
+  build-binaries:
+    name: Build Release Binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            suffix: ''
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            suffix: '-arm64'
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            suffix: '-macos'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: |
+          cargo build -p jarvis-compiler --release --target ${{ matrix.target }} 2>&1
+          echo "Binary size: $(wc -c < target/${{ matrix.target }}/release/jarvis-compiler) bytes"
+
+      - name: Package binary
+        run: |
+          cd target/${{ matrix.target }}/release
+          mv jarvis-compiler jrvc${{ matrix.suffix }}
+          tar -czf jrvc-${{ github.ref_name }}${{ matrix.suffix }}.tar.gz jrvc${{ matrix.suffix }}
+          sha256sum jrvc${{ matrix.suffix }} > jrvc${{ matrix.suffix }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/jrvc*
+
+  release:
+    name: Create Release
+    needs: [build-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname | head -2 | tail -1 || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            git log $PREV_TAG..HEAD --oneline --no-merges >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            git log --oneline --no-merges -30 >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          merge-multiple: true
+
+      - name: List binaries
+        run: ls -la jrvc*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            ## JARVIS Compiler ${{ github.ref_name }}
+
+            ### 📥 Downloads
+            | Platform | Binary | SHA256 |
+            |----------|--------|--------|
+            | Linux x86_64 | `jrvc` | See checksum file |
+            | Linux ARM64 | `jrvc-arm64` | See checksum file |
+            | macOS x86_64 | `jrvc-macos` | See checksum file |
+
+            ### 🔄 Changes
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            ---
+            *Built by JARVIS Release Pipeline*
+          files: jrvc*
+          draft: ${{ github.event.inputs.prerelease == 'true' || contains(github.ref_name, 'rc') }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' || contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') }}
+          generate_release_notes: true

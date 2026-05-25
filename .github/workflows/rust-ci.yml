@@ -1,4 +1,4 @@
-name: Rust Compiler CI
+name: 🦀 Rust Compiler CI
 
 on:
   push:
@@ -6,26 +6,63 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
+    name: Build & Test (Rust ${{ matrix.toolchain }})
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: compiler
+    strategy:
+      matrix:
+        toolchain: [stable]
+        include:
+          - toolchain: nightly
+            allow-failure: true
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Install Rust toolchain
+      - name: Install Rust ${{ matrix.toolchain }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.toolchain }}
 
-      - name: Build
-        run: cargo build 2>&1
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
-      - name: Run tests
-        run: cargo test 2>&1
+      - name: Build workspace (all crates)
+        run: cargo build --workspace 2>&1
 
-      - name: Test --governor CLI flag
-        run: ./target/debug/jarvis-compiler --governor
+      - name: Run full test suite
+        run: cargo test --workspace 2>&1
+
+      - name: Test CLI flags
+        run: |
+          ./target/debug/jarvis-compiler --version
+          ./target/debug/jarvis-compiler --governor
+          ./target/debug/jarvis-compiler --full-diagnostics
+
+      - name: Upload test results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.toolchain }}
+          path: target/debug/*.d
+          retention-days: 7
+
+      - name: Allow nightly failures
+        if: ${{ matrix.allow-failure }}
+        continue-on-error: true
