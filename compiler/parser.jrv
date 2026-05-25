@@ -178,8 +178,14 @@ complexity O(N)
         test "modulate_stmt_proof" {
             let state = ParserState { tokens: "modulate frequency to 500_mhz;", cursor: 0 };
             let ast = parse_modulate_stmt(state);
-            assert(ast.type_id == 28); // MODULATE_STMT ID
+            assert(ast.type_id == 28);
             assert(tg_ir.is_frequency_modulated(ast));
+        }
+        test "harvest_stmt_proof" {
+            let state = ParserState { tokens: "harvest from 'sensor_0';", cursor: 0 };
+            let ast = parse_harvest_stmt(state);
+            assert(ast.type_id == 29); // HARVEST_STMT ID
+            assert(tg_ir.is_entropy_harvested(ast));
         }
     }
 
@@ -229,6 +235,7 @@ complexity O(N)
         if (tok == 25) { return parse_reason_stmt(state); }
         if (tok == 26) { return parse_distill_stmt(state); }
         if (tok == 27) { return parse_modulate_stmt(state); }
+        if (tok == 28) { return parse_harvest_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -386,9 +393,15 @@ complexity O(N)
     }
 
     func parse_modulate_stmt(state: ParserState) -> ASTNode {
-        // ADR 004: Parse 'modulate' primitive for clock gating.
-        state.cursor = state.cursor + 1; // skip modulate
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 28, children: children_stream };
+    }
+
+    func parse_harvest_stmt(state: ParserState) -> ASTNode {
+        // ADR 004: Parse 'harvest' primitive for substrate entropy scavenging.
+        state.cursor = state.cursor + 1; // skip harvest
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 29, children: children_stream };
     }
 }
