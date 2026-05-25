@@ -148,8 +148,14 @@ complexity O(N)
         test "interact_stmt_proof" {
             let state = ParserState { tokens: "interact with 'node_b' sharing reason_0;", cursor: 0 };
             let ast = parse_interact_stmt(state);
-            assert(ast.type_id == 23); // INTERACT_STMT ID
+            assert(ast.type_id == 23);
             assert(tg_ir.is_agentic_interaction(ast));
+        }
+        test "ignite_stmt_proof" {
+            let state = ParserState { tokens: "ignite;", cursor: 0 };
+            let ast = parse_ignite_stmt(state);
+            assert(ast.type_id == 24); // IGNITE_STMT ID
+            assert(tg_ir.is_substrate_ignited(ast));
         }
     }
 
@@ -194,6 +200,7 @@ complexity O(N)
         if (tok == 20) { return parse_quench_stmt(state); }
         if (tok == 21) { return parse_telemetry_stmt(state); }
         if (tok == 22) { return parse_interact_stmt(state); }
+        if (tok == 23) { return parse_ignite_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -321,9 +328,15 @@ complexity O(N)
     }
 
     func parse_interact_stmt(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'interact' primitive for agentic reason-sharing.
-        state.cursor = state.cursor + 1; // skip interact
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 23, children: children_stream };
+    }
+
+    func parse_ignite_stmt(state: ParserState) -> ASTNode {
+        // ADR 007: Parse 'ignite' primitive for high-energy cognitive bursts.
+        state.cursor = state.cursor + 1; // skip ignite
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 24, children: children_stream };
     }
 }
