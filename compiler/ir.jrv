@@ -21,6 +21,7 @@ complexity O(1)
         SWARM_VOTE: i32,
         CORE_PIN: i32,
         SWARM_SPAWN: i32,
+        SWARM_MERGE: i32,
         HALT: i32
     }
 
@@ -43,6 +44,7 @@ complexity O(1)
             assert(ops.SWARM_VOTE == 15);
             assert(ops.CORE_PIN == 16);
             assert(ops.SWARM_SPAWN == 17);
+            assert(ops.SWARM_MERGE == 18);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -65,6 +67,7 @@ complexity O(1)
             SWARM_VOTE: 15,
             CORE_PIN: 16,
             SWARM_SPAWN: 17,
+            SWARM_MERGE: 18,
             HALT: 0
         };
     }
