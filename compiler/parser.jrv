@@ -244,8 +244,14 @@ complexity O(N)
         test "fuse_stmt_proof" {
             let state = ParserState { tokens: "fuse reasoning_0 with reasoning_1;", cursor: 0 };
             let ast = parse_fuse_stmt(state);
-            assert(ast.type_id == 39); // FUSE_STMT ID
+            assert(ast.type_id == 39);
             assert(tg_ir.is_cognitive_fused(ast));
+        }
+        test "evolve_to_stmt_proof" {
+            let state = ParserState { tokens: "evolve-to target_ast;", cursor: 0 };
+            let ast = parse_evolve_to_stmt(state);
+            assert(ast.type_id == 40); // EVOLVE_TO_STMT ID
+            assert(tg_ir.is_evolution_target(ast));
         }
     }
 
@@ -306,6 +312,7 @@ complexity O(N)
         if (tok == 36) { return parse_entangle_stmt(state); }
         if (tok == 37) { return parse_remap_stmt(state); }
         if (tok == 38) { return parse_fuse_stmt(state); }
+        if (tok == 39) { return parse_evolve_to_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -529,9 +536,15 @@ complexity O(N)
     }
 
     func parse_fuse_stmt(state: ParserState) -> ASTNode {
-        // ADR 003 & 005: Parse 'fuse' primitive for cognitive reason fusion.
-        state.cursor = state.cursor + 1; // skip fuse
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 39, children: children_stream };
+    }
+
+    func parse_evolve_to_stmt(state: ParserState) -> ASTNode {
+        // ADR 005: Parse 'evolve-to' primitive for autonomous code evolution.
+        state.cursor = state.cursor + 1; // skip evolve-to
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 40, children: children_stream };
     }
 }
