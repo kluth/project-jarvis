@@ -48,6 +48,7 @@ complexity O(1)
         COGNITIVE_COGNIZE: i32,
         COGNITIVE_REREASON: i32,
         COGNITIVE_RECOGNIZE: i32,
+        HAL_REMAP_IO: i32,
         HALT: i32
     }
 
@@ -97,6 +98,7 @@ complexity O(1)
             assert(ops.COGNITIVE_COGNIZE == 42);
             assert(ops.COGNITIVE_REREASON == 43);
             assert(ops.COGNITIVE_RECOGNIZE == 44);
+            assert(ops.HAL_REMAP_IO == 45);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -146,6 +148,7 @@ complexity O(1)
             COGNITIVE_COGNIZE: 42,
             COGNITIVE_REREASON: 43,
             COGNITIVE_RECOGNIZE: 44,
+            HAL_REMAP_IO: 45,
             HALT: 0
         };
     }
