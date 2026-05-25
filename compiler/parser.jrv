@@ -106,8 +106,14 @@ complexity O(N)
         test "synapse_decl_proof" {
             let state = ParserState { tokens: "synapse connect a to b weight 0.8;", cursor: 0 };
             let ast = parse_synapse_decl(state);
-            assert(ast.type_id == 16); // SYNAPSE_DECL ID
+            assert(ast.type_id == 16);
             assert(tg_ir.is_weighted_edge(ast));
+        }
+        test "merge_stmt_proof" {
+            let state = ParserState { tokens: "merge 'node_a' with 'node_b';", cursor: 0 };
+            let ast = parse_merge_stmt(state);
+            assert(ast.type_id == 17); // MERGE_STMT ID
+            assert(tg_ir.is_swarm_merge(ast));
         }
     }
 
@@ -145,6 +151,7 @@ complexity O(N)
         if (tok == 13) { return parse_spawn_stmt(state); }
         if (tok == 14) { return parse_budget_block(state); }
         if (tok == 15) { return parse_synapse_decl(state); }
+        if (tok == 16) { return parse_merge_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -230,9 +237,15 @@ complexity O(N)
     }
 
     func parse_synapse_decl(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'synapse' declaration for weighted edges in the graph.
-        state.cursor = state.cursor + 1; // skip synapse
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 16, children: children_stream };
+    }
+
+    func parse_merge_stmt(state: ParserState) -> ASTNode {
+        // ADR 005: Parse 'merge' primitive for swarm consolidation.
+        state.cursor = state.cursor + 1; // skip merge
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 17, children: children_stream };
     }
 }
