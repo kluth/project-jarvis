@@ -196,8 +196,14 @@ complexity O(N)
         test "quiesce_stmt_proof" {
             let state = ParserState { tokens: "quiesce;", cursor: 0 };
             let ast = parse_quiesce_stmt(state);
-            assert(ast.type_id == 31); // QUIESCE_STMT ID
+            assert(ast.type_id == 31);
             assert(tg_ir.is_swarm_quiescent(ast));
+        }
+        test "project_stmt_proof" {
+            let state = ParserState { tokens: "project cognitive_state to surface_0;", cursor: 0 };
+            let ast = parse_project_stmt(state);
+            assert(ast.type_id == 32); // PROJECT_STMT ID
+            assert(tg_ir.is_cognitive_projected(ast));
         }
     }
 
@@ -250,6 +256,7 @@ complexity O(N)
         if (tok == 28) { return parse_harvest_stmt(state); }
         if (tok == 29) { return parse_rewire_stmt(state); }
         if (tok == 30) { return parse_quiesce_stmt(state); }
+        if (tok == 31) { return parse_project_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -425,9 +432,15 @@ complexity O(N)
     }
 
     func parse_quiesce_stmt(state: ParserState) -> ASTNode {
-        // ADR 005: Parse 'quiesce' primitive for distributed energy conservation.
-        state.cursor = state.cursor + 1; // skip quiesce
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 31, children: children_stream };
+    }
+
+    func parse_project_stmt(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'project' primitive for cognitive visualization.
+        state.cursor = state.cursor + 1; // skip project
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 32, children: children_stream };
     }
 }
