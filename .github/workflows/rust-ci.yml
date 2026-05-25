@@ -42,14 +42,14 @@ jobs:
 
       - name: Test CLI flags
         run: |
-          ./target/debug/jarvis-compiler --version
-          ./target/debug/jarvis-compiler --governor
-          ./target/debug/jarvis-compiler --full-diagnostics
+          ../target/debug/jarvis-compiler --version
+          ../target/debug/jarvis-compiler --governor
+          ../target/debug/jarvis-compiler --full-diagnostics
 
       - name: Upload test results (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: target/debug/*.d
+          path: ../target/debug/*.d
           retention-days: 7
