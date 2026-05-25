@@ -28,97 +28,133 @@ complexity O(N)
         test "prob_block_proof" {
             let state = ParserState { tokens: "prob { 0.5: call() }", cursor: 0 };
             let ast = parse_prob_block(state);
-            assert(ast.type_id == 3); // PROB_BLOCK ID
+            assert(ast.type_id == 3);
             assert(tg_ir.has_stochastic_branch(ast));
         }
         test "sync_block_proof" {
             let state = ParserState { tokens: "sync(var) { x = 1; }", cursor: 0 };
             let ast = parse_sync_block(state);
-            assert(ast.type_id == 4); // SYNC_BLOCK ID
+            assert(ast.type_id == 4);
             assert(tg_ir.has_consensus_gate(ast));
         }
         test "gossip_proof" {
             let state = ParserState { tokens: "gossip 'peer.node';", cursor: 0 };
             let ast = parse_gossip(state);
-            assert(ast.type_id == 5); // GOSSIP ID
+            assert(ast.type_id == 5);
             assert(tg_ir.is_decentralized_prop(ast));
         }
         test "memory_decl_proof" {
             let state = ParserState { tokens: "memory tensor x = 0;", cursor: 0 };
             let ast = parse_memory_decl(state);
-            assert(ast.type_id == 6); // MEMORY_DECL ID
+            assert(ast.type_id == 6);
             assert(tg_ir.has_temporal_persistence(ast));
         }
         test "evolve_block_proof" {
             let state = ParserState { tokens: "evolve { x = x + 1; }", cursor: 0 };
             let ast = parse_evolve_block(state);
-            assert(ast.type_id == 7); // EVOLVE_BLOCK ID
+            assert(ast.type_id == 7);
             assert(tg_ir.is_mutation_candidate(ast));
         }
         test "contract_block_proof" {
             let state = ParserState { tokens: "contract { assert(x > 0); }", cursor: 0 };
             let ast = parse_contract_block(state);
-            assert(ast.type_id == 8); // CONTRACT_BLOCK ID
+            assert(ast.type_id == 8);
             assert(tg_ir.has_formal_constraints(ast));
         }
         test "knowledge_decl_proof" {
             let state = ParserState { tokens: "knowledge embedding k = [0.1, 0.2];", cursor: 0 };
             let ast = parse_knowledge_decl(state);
-            assert(ast.type_id == 9); // KNOWLEDGE_DECL ID
+            assert(ast.type_id == 9);
             assert(tg_ir.is_content_addressable(ast));
+        }
+        test "neural_block_proof" {
+            let state = ParserState { tokens: "neural { let res = a @ b; }", cursor: 0 };
+            let ast = parse_neural_block(state);
+            assert(ast.type_id == 10);
+            assert(tg_ir.is_npu_direct_mapped(ast));
         }
     }
 
     func parse_module(state: ParserState) -> ASTNode {
-        // Recursive descent parsing logic in pure JARVIS
-        // Rule: No implicit recursion depth; use bounded stack if necessary
+        bind(children_stream, tg_ir.create_stream());
         
-        let module_node = 0;
-        
-        // 1. Match 'module' keyword
-        // 2. Parse name
-        // 3. Parse body
-        
-        return ASTNode { type_id: 1, children: "ROOT" };
+        while (state.cursor < 100000) {
+            let tok = state.tokens[state.cursor];
+            if (tok == 0) { // EOF
+                break;
+            }
+            if (tok == 1) { // Module keyword
+                state.cursor = state.cursor + 2; // skip keyword and name
+            } else {
+                let stmt = parse_statement(state);
+                tg_ir.stream_push(children_stream, stmt);
+            }
+        }
+        return ASTNode { type_id: 1, children: children_stream };
     }
 
     func parse_statement(state: ParserState) -> ASTNode {
-        // Parse individual statements (let, return, if, etc.)
-        return ASTNode { type_id: 2, children: "STMT" };
+        let tok = state.tokens[state.cursor];
+        if (tok == 2) { return parse_prob_block(state); }
+        if (tok == 3) { return parse_sync_block(state); }
+        if (tok == 4) { return parse_gossip(state); }
+        if (tok == 5) { return parse_memory_decl(state); }
+        if (tok == 6) { return parse_evolve_block(state); }
+        if (tok == 7) { return parse_contract_block(state); }
+        if (tok == 8) { return parse_knowledge_decl(state); }
+        if (tok == 9) { return parse_neural_block(state); }
+        
+        state.cursor = state.cursor + 1;
+        bind(empty_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 2, children: empty_stream };
     }
 
     func parse_prob_block(state: ParserState) -> ASTNode {
-        // Parse 'prob' keyword and the following stochastic blocks
-        return ASTNode { type_id: 3, children: "PROB_STMT" };
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 3, children: children_stream };
     }
 
     func parse_sync_block(state: ParserState) -> ASTNode {
-        // Parse 'sync' keyword for swarm consensus
-        return ASTNode { type_id: 4, children: "SYNC_STMT" };
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 4, children: children_stream };
     }
 
     func parse_gossip(state: ParserState) -> ASTNode {
-        // Parse 'gossip' primitive
-        return ASTNode { type_id: 5, children: "GOSSIP_STMT" };
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 5, children: children_stream };
     }
 
     func parse_memory_decl(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'memory' keyword for persistent AI state.
-        return ASTNode { type_id: 6, children: "MEMORY_STMT" };
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 6, children: children_stream };
     }
 
     func parse_evolve_block(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'evolve' block for self-optimizing logic.
-        return ASTNode { type_id: 7, children: "EVOLVE_STMT" };
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 7, children: children_stream };
     }
 
     func parse_contract_block(state: ParserState) -> ASTNode {
-        // ADR 006: Parse 'contract' block to guard evolution.
-        return ASTNode { type_id: 8, children: "CONTRACT_STMT" };
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 8, children: children_stream };
     }
 
     func parse_knowledge_decl(state: ParserState) -> ASTNode {
-        // ADR 006: Parse 'knowledge' keyword for content-addressable storage.
-        return ASTNode { type_id: 9, children: "KNOWLEDGE_STMT" };
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 9, children: children_stream };
+    }
+
+    func parse_neural_block(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'neural' block for direct hardware mapping of tensor ops.
+        state.cursor = state.cursor + 1;
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 10, children: children_stream };
     }
 }

@@ -16,6 +16,7 @@ complexity O(1)
         SWARM_SYNC: i32,
         GOSSIP: i32,
         ZKP_VERIFY: i32,
+        NEURAL_DOT: i32,
         HALT: i32
     }
 
@@ -33,6 +34,7 @@ complexity O(1)
             assert(ops.SWARM_SYNC == 10);
             assert(ops.GOSSIP == 11);
             assert(ops.ZKP_VERIFY == 12);
+            assert(ops.NEURAL_DOT == 13);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -50,6 +52,7 @@ complexity O(1)
             SWARM_SYNC: 10,
             GOSSIP: 11,
             ZKP_VERIFY: 12,
+            NEURAL_DOT: 13,
             HALT: 0
         };
     }
