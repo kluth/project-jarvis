@@ -136,8 +136,14 @@ complexity O(N)
         test "quench_stmt_proof" {
             let state = ParserState { tokens: "quench;", cursor: 0 };
             let ast = parse_quench_stmt(state);
-            assert(ast.type_id == 21); // QUENCH_STMT ID
+            assert(ast.type_id == 21);
             assert(tg_ir.is_substrate_quenched(ast));
+        }
+        test "telemetry_stmt_proof" {
+            let state = ParserState { tokens: "telemetry { entropy: usage };", cursor: 0 };
+            let ast = parse_telemetry_stmt(state);
+            assert(ast.type_id == 22); // TELEMETRY_STMT ID
+            assert(tg_ir.is_telemetry_stream(ast));
         }
     }
 
@@ -180,6 +186,7 @@ complexity O(N)
         if (tok == 18) { return parse_pulse_stmt(state); }
         if (tok == 19) { return parse_shred_stmt(state); }
         if (tok == 20) { return parse_quench_stmt(state); }
+        if (tok == 21) { return parse_telemetry_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -295,9 +302,15 @@ complexity O(N)
     }
 
     func parse_quench_stmt(state: ParserState) -> ASTNode {
-        // ADR 004: Parse 'quench' primitive for substrate thermal management.
-        state.cursor = state.cursor + 1; // skip quench
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 21, children: children_stream };
+    }
+
+    func parse_telemetry_stmt(state: ParserState) -> ASTNode {
+        // ADR 005 & 006: Parse 'telemetry' primitive for swarm observability.
+        state.cursor = state.cursor + 1; // skip telemetry
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 22, children: children_stream };
     }
 }
