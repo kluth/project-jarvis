@@ -17,6 +17,7 @@ complexity O(1)
         GOSSIP: i32,
         ZKP_VERIFY: i32,
         NEURAL_DOT: i32,
+        COLLAPSE: i32,
         HALT: i32
     }
 
@@ -35,6 +36,7 @@ complexity O(1)
             assert(ops.GOSSIP == 11);
             assert(ops.ZKP_VERIFY == 12);
             assert(ops.NEURAL_DOT == 13);
+            assert(ops.COLLAPSE == 14);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -53,6 +55,7 @@ complexity O(1)
             GOSSIP: 11,
             ZKP_VERIFY: 12,
             NEURAL_DOT: 13,
+            COLLAPSE: 14,
             HALT: 0
         };
     }

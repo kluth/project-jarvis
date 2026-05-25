@@ -73,6 +73,12 @@ complexity O(N)
             assert(ast.type_id == 10);
             assert(tg_ir.is_npu_direct_mapped(ast));
         }
+        test "collapse_stmt_proof" {
+            let state = ParserState { tokens: "collapse(sensor_0);", cursor: 0 };
+            let ast = parse_collapse_stmt(state);
+            assert(ast.type_id == 11);
+            assert(tg_ir.is_quantum_collapse(ast));
+        }
     }
 
     func parse_module(state: ParserState) -> ASTNode {
@@ -103,6 +109,7 @@ complexity O(N)
         if (tok == 7) { return parse_contract_block(state); }
         if (tok == 8) { return parse_knowledge_decl(state); }
         if (tok == 9) { return parse_neural_block(state); }
+        if (tok == 10) { return parse_collapse_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -152,9 +159,15 @@ complexity O(N)
     }
 
     func parse_neural_block(state: ParserState) -> ASTNode {
-        // ADR 003: Parse 'neural' block for direct hardware mapping of tensor ops.
         state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 10, children: children_stream };
+    }
+
+    func parse_collapse_stmt(state: ParserState) -> ASTNode {
+        // ADR 004: Parse 'collapse' primitive to resolve quantum state.
+        state.cursor = state.cursor + 1; // skip collapse
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 11, children: children_stream };
     }
 }
