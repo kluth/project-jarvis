@@ -9,6 +9,7 @@ pub mod vm;
 pub mod aot;
 pub mod backend;
 pub mod nci;
+pub mod fixed_types;
 
 #[cfg(test)]
 mod tests {
