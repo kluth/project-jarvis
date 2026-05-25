@@ -36,6 +36,11 @@ complexity O(N)
             assert(tg_ir.verify_boot_sector(sector));
             assert(tg_ir.has_signature(sector, 0xAA55));
         }
+        test "dependency_graph_emission_proof" {
+            let ast = tg_ir.mock_ast();
+            let graph = emit_dependency_graph(ast);
+            assert(tg_ir.is_valid_json_graph(graph));
+        }
     }
 
     func lower_to_elf(ast: Stream) -> Stream {
@@ -76,5 +81,10 @@ complexity O(N)
     func optimize_evolving_block(ast: Stream) -> Stream {
         // ADR 003: Benchmarks and selects the optimal path for an evolving block.
         return tg_ir.benchmark_and_lower(ast);
+    }
+
+    func emit_dependency_graph(ast: Stream) -> Stream {
+        // ADR 0009: Exposes the Tensor-Graph IR as a queryable JSON dependency graph.
+        return tg_ir.serialize_ast_to_json_graph(ast);
     }
 }
