@@ -142,8 +142,14 @@ complexity O(N)
         test "telemetry_stmt_proof" {
             let state = ParserState { tokens: "telemetry { entropy: usage };", cursor: 0 };
             let ast = parse_telemetry_stmt(state);
-            assert(ast.type_id == 22); // TELEMETRY_STMT ID
+            assert(ast.type_id == 22);
             assert(tg_ir.is_telemetry_stream(ast));
+        }
+        test "interact_stmt_proof" {
+            let state = ParserState { tokens: "interact with 'node_b' sharing reason_0;", cursor: 0 };
+            let ast = parse_interact_stmt(state);
+            assert(ast.type_id == 23); // INTERACT_STMT ID
+            assert(tg_ir.is_agentic_interaction(ast));
         }
     }
 
@@ -187,6 +193,7 @@ complexity O(N)
         if (tok == 19) { return parse_shred_stmt(state); }
         if (tok == 20) { return parse_quench_stmt(state); }
         if (tok == 21) { return parse_telemetry_stmt(state); }
+        if (tok == 22) { return parse_interact_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -308,9 +315,15 @@ complexity O(N)
     }
 
     func parse_telemetry_stmt(state: ParserState) -> ASTNode {
-        // ADR 005 & 006: Parse 'telemetry' primitive for swarm observability.
-        state.cursor = state.cursor + 1; // skip telemetry
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 22, children: children_stream };
+    }
+
+    func parse_interact_stmt(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'interact' primitive for agentic reason-sharing.
+        state.cursor = state.cursor + 1; // skip interact
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 23, children: children_stream };
     }
 }
