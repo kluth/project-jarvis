@@ -118,8 +118,14 @@ complexity O(N)
         test "boundary_block_proof" {
             let state = ParserState { tokens: "boundary { let x = prob { 0.5: 1 }; }", cursor: 0 };
             let ast = parse_boundary_block(state);
-            assert(ast.type_id == 18); // BOUNDARY_BLOCK ID
+            assert(ast.type_id == 18);
             assert(tg_ir.is_decoherence_guarded(ast));
+        }
+        test "pulse_stmt_proof" {
+            let state = ParserState { tokens: "pulse 100_ms;", cursor: 0 };
+            let ast = parse_pulse_stmt(state);
+            assert(ast.type_id == 19); // PULSE_STMT ID
+            assert(tg_ir.is_cognitive_pulse(ast));
         }
     }
 
@@ -159,6 +165,7 @@ complexity O(N)
         if (tok == 15) { return parse_synapse_decl(state); }
         if (tok == 16) { return parse_merge_stmt(state); }
         if (tok == 17) { return parse_boundary_block(state); }
+        if (tok == 18) { return parse_pulse_stmt(state); }
         
         state.cursor = state.cursor + 1;
         bind(empty_stream, tg_ir.create_stream());
@@ -256,9 +263,15 @@ complexity O(N)
     }
 
     func parse_boundary_block(state: ParserState) -> ASTNode {
-        // ADR 004: Parse 'boundary' block to enforce quantum decoherence.
-        state.cursor = state.cursor + 1; // skip boundary
+        state.cursor = state.cursor + 1;
         bind(children_stream, tg_ir.create_stream());
         return ASTNode { type_id: 18, children: children_stream };
+    }
+
+    func parse_pulse_stmt(state: ParserState) -> ASTNode {
+        // ADR 003: Parse 'pulse' primitive for cognitive synchronization.
+        state.cursor = state.cursor + 1; // skip pulse
+        bind(children_stream, tg_ir.create_stream());
+        return ASTNode { type_id: 19, children: children_stream };
     }
 }
