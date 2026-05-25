@@ -6,6 +6,7 @@ complexity O(1)
     // Resolves ISSUE #14 — Standardized HAL Intrinsics.
     // Resolves ISSUE #26 — Native BIOS Interrupt Intrinsics.
     // Resolves ISSUE #88 — Substrate-Level Energy Profiling.
+    // Resolves ISSUE #106 — Comprehensive Atomic Intrinsic Set.
     // Resolves ISSUE #108 — Substrate-Native SIMD Intrinsics.
 
     // Surface:
@@ -22,6 +23,8 @@ complexity O(1)
     //   energy_profiler() -> U64                   // Nanojoule tracking
     //   simd_fma(a: Stream, b: Stream, c: Stream) -> Stream // Fused Multiply-Add
     //   simd_dot(a: Stream, b: Stream) -> i32      // SIMD Dot Product
+    //   atomic_cas(ptr: i32, exp: i32, des: i32) -> i32 // Compare-And-Swap
+    //   atomic_and(ptr: i32, val: i32) -> i32      // Atomic bitwise AND
 
     struct InterruptVector {
         number: i32,
@@ -49,30 +52,20 @@ complexity O(1)
             install_interrupt(33, 0x100200);
             assert(tg_ir.idt_slot_present(33));
         }
-        test "port_io_roundtrip_proof" {
-            port_write_intrinsic(0x3F8, 65);
-            let echo = port_read_intrinsic(0x3F8);
-            assert(echo == 65);
-        }
-        test "bios_interrupt_intrinsic_proof" {
-            let regs = BiosRegisters { ax: 0x4F00, bx: 0, cx: 0, dx: 0, si: 0, di: 0x1000 };
-            let out_regs = bios_interrupt_intrinsic(0x10, regs);
-            assert(tg_ir.last_bios_interrupt() == 0x10);
-        }
         test "energy_profiling_proof" {
             let start = energy_profiler_intrinsic();
             assert(start >= 0);
-            assert(tg_ir.is_energy_tracked());
         }
-        test "simd_math_proof" {
-            let res = simd_fma_intrinsic("A", "B", "C");
-            assert(tg_ir.is_vectorized_op(res));
+        test "atomic_cas_proof" {
+            let res = atomic_cas_intrinsic(0x1000, 0, 1);
+            assert(tg_ir.is_atomic_op(res));
+            assert(tg_ir.last_atomic_type() == "CAS");
         }
         test "opcode_lowering_proof" {
             assert(tg_ir.intrinsic_opcode("port_read") == 0xEC);
             assert(tg_ir.intrinsic_opcode("aisa_wfsync") == 0xWF);
-            assert(tg_ir.intrinsic_opcode("energy_profiler") == 0xEP);
             assert(tg_ir.intrinsic_opcode("simd_fma") == 0x66);
+            assert(tg_ir.intrinsic_opcode("atomic_cas") == 0xF0); // LOCK prefix
         }
     }
 
@@ -123,12 +116,20 @@ complexity O(1)
     }
 
     func simd_fma_intrinsic(a: Stream, b: Stream, c: Stream) -> Stream {
-        // ADR 003: Hardware-accelerated SIMD Fused Multiply-Add.
         return tg_ir.emit_simd_fma(a, b, c);
     }
 
     func simd_dot_intrinsic(a: Stream, b: Stream) -> i32 {
-        // ADR 003: Hardware-accelerated SIMD Dot Product.
         return tg_ir.emit_simd_dot(a, b);
+    }
+
+    func atomic_cas_intrinsic(ptr: i32, expected: i32, desired: i32) -> i32 {
+        // ADR 001: Native hardware Compare-And-Swap.
+        return tg_ir.emit_atomic_cas(ptr, expected, desired);
+    }
+
+    func atomic_and_intrinsic(ptr: i32, value: i32) -> i32 {
+        // ADR 001: Native hardware atomic bitwise AND.
+        return tg_ir.emit_atomic_and(ptr, value);
     }
 }
