@@ -103,7 +103,7 @@ jobs:
       - name: Count tests
         run: |
           RUST_TESTS=$(grep -rn "#\[test\]" --include='*.rs' . --exclude-dir=target 2>/dev/null | wc -l)
-          JRV_TESTS=$(grep -rn "test "" --include='*.jrv' . --exclude-dir=target 2>/dev/null | wc -l)
+          JRV_TESTS=$(grep -rn 'test "' --include='*.jrv' . --exclude-dir=target 2>/dev/null | wc -l)
           echo "Rust tests: $RUST_TESTS" >> $GITHUB_STEP_SUMMARY
           echo "JRV tests: $JRV_TESTS" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
