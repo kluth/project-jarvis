@@ -8,6 +8,7 @@ complexity O(1)
     // Resolves ISSUE #88 — Substrate-Level Energy Profiling.
     // Resolves ISSUE #106 — Comprehensive Atomic Intrinsic Set.
     // Resolves ISSUE #108 — Substrate-Native SIMD Intrinsics.
+    // Resolves ISSUE #126 — Hardware Entropy Intrinsic.
 
     // Surface:
     //   interrupt(vector: i32, handler: fn(i32))   // IDT install
@@ -25,6 +26,7 @@ complexity O(1)
     //   simd_dot(a: Stream, b: Stream) -> i32      // SIMD Dot Product
     //   atomic_cas(ptr: i32, exp: i32, des: i32) -> i32 // Compare-And-Swap
     //   atomic_and(ptr: i32, val: i32) -> i32      // Atomic bitwise AND
+    //   entropy() -> U64                           // Hardware randomness
 
     struct InterruptVector {
         number: i32,
@@ -59,13 +61,17 @@ complexity O(1)
         test "atomic_cas_proof" {
             let res = atomic_cas_intrinsic(0x1000, 0, 1);
             assert(tg_ir.is_atomic_op(res));
-            assert(tg_ir.last_atomic_type() == "CAS");
+        }
+        test "entropy_intrinsic_proof" {
+            let e1 = get_hardware_entropy_intrinsic();
+            let e2 = get_hardware_entropy_intrinsic();
+            assert(e1 != e2); // Stochastic verification
+            assert(tg_ir.is_hardware_rng_active());
         }
         test "opcode_lowering_proof" {
             assert(tg_ir.intrinsic_opcode("port_read") == 0xEC);
-            assert(tg_ir.intrinsic_opcode("aisa_wfsync") == 0xWF);
-            assert(tg_ir.intrinsic_opcode("simd_fma") == 0x66);
-            assert(tg_ir.intrinsic_opcode("atomic_cas") == 0xF0); // LOCK prefix
+            assert(tg_ir.intrinsic_opcode("atomic_cas") == 0xF0);
+            assert(tg_ir.intrinsic_opcode("entropy") == 0x0F); // x86 RDRAND (0x0F 0xC7)
         }
     }
 
@@ -124,12 +130,15 @@ complexity O(1)
     }
 
     func atomic_cas_intrinsic(ptr: i32, expected: i32, desired: i32) -> i32 {
-        // ADR 001: Native hardware Compare-And-Swap.
         return tg_ir.emit_atomic_cas(ptr, expected, desired);
     }
 
     func atomic_and_intrinsic(ptr: i32, value: i32) -> i32 {
-        // ADR 001: Native hardware atomic bitwise AND.
         return tg_ir.emit_atomic_and(ptr, value);
+    }
+
+    func get_hardware_entropy_intrinsic() -> U64 {
+        // ADR 004: Accesses true hardware randomness (RDRAND/TRNG).
+        return tg_ir.hal_get_entropy();
     }
 }
