@@ -113,16 +113,4 @@ complexity O(N)
         // ADR 011: Renders a semantic overlay that can be interpreted by AI agents.
         tg_ir.render_cognitive_tensor(layer.x, layer.y, layer.w, layer.h, color);
     }
-
-    func mock_scene_2() -> Scene {
-        return Scene { name: "two_layer", layer_count: 2, layers_ptr: tg_ir.mock_scene_table(2) };
-    }
-
-    func mock_scene_10() -> Scene {
-        return Scene { name: "aetheris", layer_count: 10, layers_ptr: tg_ir.mock_scene_table(10) };
-    }
-
-    func mock_scene_animated() -> Scene {
-        return Scene { name: "animated", layer_count: 3, layers_ptr: tg_ir.mock_scene_table_animated() };
-    }
 }
