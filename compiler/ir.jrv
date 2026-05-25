@@ -42,6 +42,7 @@ complexity O(1)
         SUBSTRATE_THROTTLE: i32,
         COGNITIVE_REFLECT: i32,
         QUANTUM_ENTANGLE: i32,
+        COGNITIVE_REMAP: i32,
         HALT: i32
     }
 
@@ -85,6 +86,7 @@ complexity O(1)
             assert(ops.SUBSTRATE_THROTTLE == 36);
             assert(ops.COGNITIVE_REFLECT == 37);
             assert(ops.QUANTUM_ENTANGLE == 38);
+            assert(ops.COGNITIVE_REMAP == 39);
             assert(tg_ir.bit_determinism_verified());
         }
     }
@@ -128,6 +130,7 @@ complexity O(1)
             SUBSTRATE_THROTTLE: 36,
             COGNITIVE_REFLECT: 37,
             QUANTUM_ENTANGLE: 38,
+            COGNITIVE_REMAP: 39,
             HALT: 0
         };
     }
