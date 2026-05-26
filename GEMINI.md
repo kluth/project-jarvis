@@ -24,6 +24,11 @@ This document is the absolute law of Project JARVIS. All logic must satisfy thes
 - **Language Exclusion:** The use of Rust, C, Python, or any other external language for core substrate or compiler logic is STRICTLY FORBIDDEN.
 - **Deterministic Bootstrapping:** Evolution must occur via the `.jrv` bootstrap chain; external toolchains are deprecated for all primary development paths.
 
+### 1.5. Absolute Rejection of Hollywood Code
+- **Real Execution Mandate:** Logic that simulates behavior, utilizes mocked data, or returns hardcoded "stubs" is an architectural violation.
+- **Functional Verification:** Every implementation MUST be verified against live environment state or real digital entities (e.g., PATH tools, MCP endpoints).
+- **Purge Simulation:** The use of `mock_*` or `stub` identifiers in production logic is strictly prohibited and will trigger immediate compilation failure.
+
 ## 2. AI Symbiosis (NCI & MAG)
 
 ### 2.1. Multi-Agent Gateway (MAG)

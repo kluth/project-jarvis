@@ -2,12 +2,25 @@ module Brain
 complexity O(1)
 {
     verify {
-        test "thought_latency" {
+        test "thought_proof" {
             let mock_stream = tg_ir.mock_stream(1024);
             let out = process_thought(mock_stream);
             assert(tg_ir.inspect_complexity(process_thought) == O(1));
             assert(out.entropy < mock_stream.entropy);
         }
+    }
+
+    func process_thought(thought_input: Stream) -> Stream {
+        budget { power: 2000_nj }
+        memory ShortTermContext: Stream [512]
+
+        evolve {
+            let response = thought_input * 2.0;
+            return response;
+        }
+    }
+
+    verify {
         test "swarm_node_notify_proof" {
             let ar = AssimilationRecord { device_id: 1, state: DriverState.Active };
             notify_swarm_node(ar);
@@ -16,16 +29,6 @@ complexity O(1)
         test "brain_purity_proof" {
             // Assert neural integrity within pure substrate
             assert(tg_ir.is_machine_native());
-        }
-    }
-
-    func process_thought(thought_input: Stream) -> Stream {
-        budget { power: 2000_nj }
-        memory ShortTermContext: Stream [512]
-        
-        evolve {
-            let response = thought_input * 2.0;
-            return response;
         }
     }
 
