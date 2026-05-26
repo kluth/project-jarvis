@@ -71,6 +71,12 @@ complexity O(N)
         return tg_ir.emit_elf_binary(ast, machine_code);
     }
 
+    func lower_to_wasm(ast: Stream) -> Stream {
+        // AI-001: Wasm Driver Gen
+        // ADR 020: Lowers the AST to a Wasm module suitable for the no_std runtime.
+        return tg_ir.emit_wasm_module(ast);
+    }
+
     func set_target_arch(arch: i32) {
         // 0 = x86_64, 1 = ARM64, 2 = RISC-V
         tg_ir.set_emission_target(arch);

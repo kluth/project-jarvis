@@ -22,15 +22,70 @@ complexity O(N)
         }
     }
     func next_token(state: LexerState) -> Token {
-        // Deterministic tokenization logic
-        // Rule: No implicit iteration; use explicit stream bounds
+        // Skip Whitespace
+        while (state.cursor < 10000) {
+            let c = state.source[state.cursor];
+            if (c == 32 || c == 9 || c == 10 || c == 13) {
+                state.cursor = state.cursor + 1;
+            } else {
+                break;
+            }
+        }
         
-        let current_char = 0; 
+        if (state.cursor >= 10000) {
+            return Token { type_id: 0, value: "EOF" };
+        }
         
-        // 1. Skip Whitespace
-        // 2. Identify Keyword or Identifier
-        // 3. Match Operators
+        let start = state.cursor;
+        let c = state.source[state.cursor];
         
-        return Token { type_id: 0, value: "EOF" };
+        if (c == 0) {
+            return Token { type_id: 0, value: "EOF" };
+        }
+
+        // Identifier or Keyword
+        if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95) {
+            while (state.cursor < 10000) {
+                let next_c = state.source[state.cursor];
+                if ((next_c >= 65 && next_c <= 90) || (next_c >= 97 && next_c <= 122) || (next_c >= 48 && next_c <= 57) || next_c == 95) {
+                    state.cursor = state.cursor + 1;
+                } else {
+                    break;
+                }
+            }
+            return Token { type_id: 1, value: "ID" };
+        }
+        
+        // Number
+        if (c >= 48 && c <= 57) {
+            while (state.cursor < 10000) {
+                let next_c = state.source[state.cursor];
+                if ((next_c >= 48 && next_c <= 57) || next_c == 46 || next_c == 95) {
+                    state.cursor = state.cursor + 1;
+                } else {
+                    break;
+                }
+            }
+            return Token { type_id: 2, value: "NUM" };
+        }
+        
+        // Single char operators
+        if (c == 61) { // '='
+            state.cursor = state.cursor + 1;
+            return Token { type_id: 3, value: "ASSIGN" };
+        }
+
+        if (c == 43) { // '+'
+            state.cursor = state.cursor + 1;
+            return Token { type_id: 4, value: "PLUS" };
+        }
+
+        if (c == 45) { // '-'
+            state.cursor = state.cursor + 1;
+            return Token { type_id: 5, value: "MINUS" };
+        }
+
+        state.cursor = state.cursor + 1;
+        return Token { type_id: -1, value: "UNKNOWN" };
     }
 }

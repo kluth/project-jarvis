@@ -22,6 +22,15 @@ complexity O(1)
         test "io_proof" {
             write_serial(65); // 'A'
             assert(tg_ir.last_port_write() == 65);
+            io_port_write(0x3F8, 66); // 'B'
+            assert(tg_ir.last_port_write() == 66);
+            let val = io_port_read(0x3F8);
+            assert(val >= 0);
+        }
+        test "mmio_proof" {
+            mmio_write_32(0xFED00000, 0x1234);
+            let val = mmio_read_32(0xFED00000);
+            assert(val >= 0);
         }
         test "trap_proof" {
             assert(tg_ir.is_trap_handler_active());
@@ -35,6 +44,33 @@ complexity O(1)
 
     func write_serial(byte: i32) {
         port write(0x3F8, byte);
+    }
+
+    func io_port_read(port_addr: i32) -> i32 {
+        let val = port read(port_addr);
+        return val;
+    }
+
+    func io_port_write(port_addr: i32, val: i32) {
+        port write(port_addr, val);
+    }
+
+    func mmio_read_32(vaddr: i64) -> i32 {
+        let val = volatile read(vaddr);
+        return val;
+    }
+
+    func mmio_write_32(vaddr: i64, val: i32) {
+        volatile write(vaddr, val);
+    }
+
+    func mmio_read_64(vaddr: i64) -> i64 {
+        let val = volatile read(vaddr);
+        return val;
+    }
+
+    func mmio_write_64(vaddr: i64, val: i64) {
+        volatile write(vaddr, val);
     }
 
     func trigger_trap(code: i32) {

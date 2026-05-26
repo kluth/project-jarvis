@@ -1,0 +1,9 @@
+    struct BiosRegisters {
+        ax: i32,
+        bx: i32,
+        cx: i32,
+        dx: i32,
+        si: i32,
+        di: i32
+    }
+
