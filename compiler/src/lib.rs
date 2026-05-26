@@ -14,6 +14,7 @@ pub mod struct_layouts;
 pub mod memory_mgmt;
 pub mod governor_engine;
 pub mod runtime_executor;
+pub mod compiler;
 
 #[cfg(test)]
 mod tests {

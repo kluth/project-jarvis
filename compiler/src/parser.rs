@@ -802,24 +802,44 @@ impl<'a> Parser<'a> {
         while precedence < self.get_precedence() {
             let op_token = self.current_token;
             self.advance();
-            let right = self.parse_expression_with_precedence(Self::token_precedence(op_token))?;
-            
-            let op_str = match op_token {
-                Token::Plus => "+",
-                Token::Minus => "-",
-                Token::Star => "*",
-                Token::Slash => "/",
-                Token::Equals => "==",
-                Token::Less => "<",
-                Token::Greater => ">",
-                _ => return Err("Unexpected binary operator".to_string()),
-            };
 
-            left = Expr::BinaryOp {
-                left: Box::new(left),
-                op: op_str,
-                right: Box::new(right),
-            };
+            match op_token {
+                Token::Dot => {
+                    if let Token::Identifier(field) = self.current_token {
+                        self.advance();
+                        left = Expr::FieldAccess {
+                            object: Box::new(left),
+                            field,
+                        };
+                    } else {
+                        return Err("Expected field name after '.'".to_string());
+                    }
+                }
+                _ => {
+                    let right = self.parse_expression_with_precedence(Self::token_precedence(op_token))?;
+
+                    let op_str = match op_token {
+                        Token::Plus => "+",
+                        Token::Minus => "-",
+                        Token::Star => "*",
+                        Token::Slash => "/",
+                        Token::Equals => "==",
+                        Token::Less => "<",
+                        Token::Greater => ">",
+                        Token::LessEqual => "<=",
+                        Token::GreaterEqual => ">=",
+                        Token::And => "&&",
+                        Token::Or => "||",
+                        _ => return Err("Unexpected binary operator".to_string()),
+                    };
+
+                    left = Expr::BinaryOp {
+                        left: Box::new(left),
+                        op: op_str,
+                        right: Box::new(right),
+                    };
+                }
+            }
         }
 
         Ok(left)
@@ -870,6 +890,22 @@ impl<'a> Parser<'a> {
                 self.expect(Token::CloseParen)?;
                 Ok(expr)
             }
+            Token::Not => {
+                self.advance();
+                let expr = self.parse_expression_with_precedence(6)?;
+                Ok(Expr::UnaryOp {
+                    op: "!",
+                    expr: Box::new(expr),
+                })
+            }
+            Token::Minus => {
+                self.advance();
+                let expr = self.parse_expression_with_precedence(6)?;
+                Ok(Expr::UnaryOp {
+                    op: "-",
+                    expr: Box::new(expr),
+                })
+            }
             _ => Err(format!("Unexpected token in expression prefix: {:?}", self.current_token))
         }
     }
@@ -880,9 +916,11 @@ impl<'a> Parser<'a> {
 
     fn token_precedence(token: Token<'a>) -> u8 {
         match token {
-            Token::Equals | Token::Less | Token::Greater => 1,
-            Token::Plus | Token::Minus => 2,
-            Token::Star | Token::Slash => 3,
+            Token::And | Token::Or => 1,
+            Token::Equals | Token::Less | Token::Greater | Token::LessEqual | Token::GreaterEqual => 2,
+            Token::Plus | Token::Minus => 3,
+            Token::Star | Token::Slash => 4,
+            Token::Dot => 5,
             _ => 0,
         }
     }

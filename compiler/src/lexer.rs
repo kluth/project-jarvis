@@ -68,6 +68,12 @@ pub enum Token<'a> {
     Equals,
     Less,
     Greater,
+    LessEqual,
+    GreaterEqual,
+    And,
+    Or,
+    Not,
+    Dot,
     Comma,
     Colon,
     Semicolon,
@@ -92,6 +98,20 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Self {
         Self { source, cursor: 0 }
+    }
+
+    /// Tokenize the entire source into a Vec of tokens (for diagnostics)
+    pub fn tokenize(&mut self) -> Vec<Token<'a>> {
+        let mut tokens = Vec::new();
+        loop {
+            let tok = self.next_token();
+            let is_eof = tok == Token::Eof;
+            tokens.push(tok);
+            if is_eof {
+                break;
+            }
+        }
+        tokens
     }
 
     pub fn next_token(&mut self) -> Token<'a> {
@@ -144,8 +164,44 @@ impl<'a> Lexer<'a> {
                     Token::Assign
                 }
             }
-            '<' => { self.consume(); Token::Less }
-            '>' => { self.consume(); Token::Greater }
+            '<' => {
+                self.consume();
+                if self.peek() == Some('=') {
+                    self.consume();
+                    Token::LessEqual
+                } else {
+                    Token::Less
+                }
+            }
+            '>' => {
+                self.consume();
+                if self.peek() == Some('=') {
+                    self.consume();
+                    Token::GreaterEqual
+                } else {
+                    Token::Greater
+                }
+            }
+            '&' => {
+                self.consume();
+                if self.peek() == Some('&') {
+                    self.consume();
+                    Token::And
+                } else {
+                    Token::Unknown
+                }
+            }
+            '|' => {
+                self.consume();
+                if self.peek() == Some('|') {
+                    self.consume();
+                    Token::Or
+                } else {
+                    Token::Unknown
+                }
+            }
+            '!' => { self.consume(); Token::Not }
+            '.' => { self.consume(); Token::Dot }
             ',' => { self.consume(); Token::Comma }
             ':' => { self.consume(); Token::Colon }
             ';' => { self.consume(); Token::Semicolon }

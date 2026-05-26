@@ -411,6 +411,16 @@ impl<'a> AotBackend<'a> {
             Expr::Input => {
                 self.emit(Opcode::InputGet, 0.05);
             }
+            Expr::UnaryOp { op, expr } => {
+                self.lower_expr(expr)?;
+                if *op == "-" { self.emit(Opcode::VecNeg, 0.02); }
+                else if *op == "!" { self.emit(Opcode::AssertContract, 0.02); }
+            }
+            Expr::FieldAccess { object, field } => {
+                self.lower_expr(object)?;
+                let hash = field.chars().fold(0u32, |acc, c| acc.wrapping_add(c as u32));
+                self.emit(Opcode::LoadImm(hash as f32), 0.02);
+            }
         }
         Ok(())
     }

@@ -28,6 +28,14 @@ pub enum Expr<'a> {
         op: &'a str,
         right: Box<Expr<'a>>,
     },
+    UnaryOp {
+        op: &'a str,
+        expr: Box<Expr<'a>>,
+    },
+    FieldAccess {
+        object: Box<Expr<'a>>,
+        field: &'a str,
+    },
     Input,
 }
 
@@ -99,8 +107,8 @@ pub enum Stmt<'a> {
     },
     Window {
         title: &'a str,
-        width: usize,
-        height: usize,
+        width: i32,
+        height: i32,
     },
     Event {
         kind: &'a str,
@@ -118,14 +126,14 @@ pub enum Stmt<'a> {
         args: Vec<Expr<'a>>,
     },
     Poll,
-    CaptureFrame,
-    CaptureStream,
     Print {
         value: Expr<'a>,
         x: Expr<'a>,
         y: Expr<'a>,
         color: Expr<'a>,
     },
+    CaptureFrame,
+    CaptureStream,
     Asm {
         block: &'a str,
     },
@@ -137,10 +145,6 @@ pub enum Stmt<'a> {
         address: Expr<'a>,
         dest: &'a str,
     },
-    AtomicOp {
-        op: &'a str,
-        args: Vec<Expr<'a>>,
-    },
     PortWrite {
         port: Expr<'a>,
         value: Expr<'a>,
@@ -148,6 +152,10 @@ pub enum Stmt<'a> {
     PortRead {
         port: Expr<'a>,
         dest: &'a str,
+    },
+    AtomicOp {
+        op: &'a str,
+        args: Vec<Expr<'a>>,
     },
     Hologram {
         kind: &'a str,
@@ -174,11 +182,6 @@ pub enum Node<'a> {
     Import {
         path: &'a str,
     },
-    Static {
-        name: &'a str,
-        address: usize,
-        size: usize,
-    },
     ComplexityBlock {
         complexity: &'a str,
         content: Vec<Node<'a>>,
@@ -194,6 +197,11 @@ pub enum Node<'a> {
         body: Vec<Stmt<'a>>,
         verification: Option<Box<Node<'a>>>,
         attributes: Vec<Attribute<'a>>,
+    },
+    Static {
+        name: &'a str,
+        address: usize,
+        size: usize,
     },
     VerifyBlock {
         tests: Vec<Node<'a>>,
@@ -216,7 +224,6 @@ pub enum Node<'a> {
         kind: &'a str,
         args: Vec<Expr<'a>>,
     },
-    Poll,
     Allocator {
         name: &'a str,
         body: Vec<Stmt<'a>>,

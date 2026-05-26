@@ -289,6 +289,8 @@ impl OmegaVerifier {
                 0.5 + args.iter().map(|a| self.estimate_expr_cost(a)).sum::<f32>()
             }
             Expr::Input => 0.1,
+            Expr::UnaryOp { expr, .. } => 0.02 + self.estimate_expr_cost(expr),
+            Expr::FieldAccess { object, .. } => 0.02 + self.estimate_expr_cost(object),
             _ => 0.01,
         }
     }
