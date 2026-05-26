@@ -119,4 +119,5 @@ jobs:
           git config --global user.email "bot@project-jarvis.local"
           git add README.md dashboard.md
           git diff --quiet && git diff --staged --quiet || git commit -m "docs(dashboard): autonomous scientific update [skip ci]"
-          git push origin main
+          # Push to dedicated branch instead of main (main is branch-protected)
+          git push origin HEAD:refs/heads/dashboard/update -f
