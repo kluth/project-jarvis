@@ -43,7 +43,15 @@ if [[ "$*" == *"--bootstrap"* ]]; then
     for f in "${JRV_FILES[@]}"; do
         if [ -f "$f" ]; then
             echo "[STAGE-0] Compiling $f..."
-            if "$COMPILER_BIN" "$f" 2>&1; then
+            # Use set +e to prevent any bash set -e edge case from aborting
+            # the bootstrap loop. All .jrv files use old syntax with tg_ir.*
+            # calls (dot operator unsupported by lexer), so compilation
+            # is expected to fail — but should never abort the CI step.
+            set +e
+            "$COMPILER_BIN" "$f" 2>&1
+            rc=$?
+            set -e
+            if [ $rc -eq 0 ]; then
                 echo "  ✅ $f compiled successfully"
                 SUCCESS=$((SUCCESS + 1))
             else
