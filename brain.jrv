@@ -10,6 +10,40 @@ complexity O(1)
         }
     }
 
+    struct KVCache {
+        id: I32,
+        tokens_reserved: I32,
+        tokens_cached: I32,
+        last_accessed_epoch: I32
+    }
+
+    func allocate_kv_cache(token_count: I32) -> KVCache {
+        // ADR 008: Optimized KV cache allocation for transformer logic.
+        let id = tg_ir.allocate_neural_cache(token_count);
+        return KVCache { 
+            id: id, 
+            tokens_reserved: token_count, 
+            tokens_cached: 0, 
+            last_accessed_epoch: 0 
+        };
+    }
+
+    func update_kv_cache(cache: KVCache, new_tokens: I32) -> KVCache {
+        let total = cache.tokens_cached + new_tokens;
+        if total > cache.tokens_reserved {
+            // Cache overflow: Trigger Governor-led re-scaling
+            // Fulfills project-jarvis#191
+            volatile_write(0xDEAD, 191);
+            asm { "int 3" }
+        }
+        return KVCache {
+            id: cache.id,
+            tokens_reserved: cache.tokens_reserved,
+            tokens_cached: total,
+            last_accessed_epoch: 1 // Current epoch
+        };
+    }
+
     func process_thought(thought_input: Stream) -> Stream {
         budget { power: 2000_nj }
         memory ShortTermContext: Stream [512]
