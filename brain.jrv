@@ -2,6 +2,10 @@ module Brain
 complexity O(1)
 {
     verify {
+        test "rescale_proof" {
+            re_scale_capacity(100);
+            assert(tg_ir.last_rescale_target() == 100);
+        }
         test "thought_proof" {
             let mock_stream = tg_ir.mock_stream(1024);
             let out = process_thought(mock_stream);
@@ -42,6 +46,13 @@ complexity O(1)
             tokens_cached: total,
             last_accessed_epoch: 1 // Current epoch
         };
+    }
+
+    func re_scale_capacity(target_efficiency: I32) {
+        // ADR 018: Autonomous cognitive precision adaptation.
+        // Higher target_efficiency -> lower precision (e.g. quantization), lower power.
+        // Fulfills project-jarvis#188
+        tg_ir.brain_rescale_weights(target_efficiency);
     }
 
     func process_thought(thought_input: Stream) -> Stream {
